@@ -1,0 +1,21 @@
+{
+    "zero-shot":[
+        [
+            "What is the capital of France?"
+        ],
+        [
+            "What is the largest planet in our solar system?"
+        ]
+  
+    ],
+    "one-shot":[
+        [
+            "What is the capital of France?",
+            "What is the name of the tower in the capital?"
+        ],
+        [
+            "What is the largest planet in our solar system?",
+            "And the second largest?"
+        ]
+    ]
+}
