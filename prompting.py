@@ -122,14 +122,21 @@ def zero_shot():
 
 def one_shot():
 
+    # Extract relevant columns from the dataset
     training_data = pd.DataFrame(extract_fallacy_data("data/RedditDataset/train.txt"))
     validation_data = pd.DataFrame(extract_fallacy_data("data/RedditDataset/dev.txt"))
     test_data = pd.DataFrame(extract_fallacy_data("data/RedditDataset/test.txt"))
 
 
+    # make new columns for overall fallacy flag and type fromm the token-wise labels
     training_data["overall_fallacy_flag"] = training_data["fallacy_flag"].apply(get_overall_fallacy_flag)
     training_data["overall_fallacy_type"] = training_data.apply(lambda row: get_overall_fallacy_type(row["fallacy_type"], row["fallacy_flag"]), axis=1)
 
+    validation_data["overall_fallacy_flag"] = validation_data["fallacy_flag"].apply(get_overall_fallacy_flag)
+    validation_data["overall_fallacy_type"] = validation_data.apply(lambda row: get_overall_fallacy_type(row["fallacy_type"], row["fallacy_flag"]), axis=1)
+
+    test_data["overall_fallacy_flag"] = test_data["fallacy_flag"].apply(get_overall_fallacy_flag)
+    test_data["overall_fallacy_type"] = test_data.apply(lambda row: get_overall_fallacy_type(row["fallacy_type"], row["fallacy_flag"]), axis=1)
 
     print(training_data[["fallacy_flag", "fallacy_type", "overall_fallacy_flag", "overall_fallacy_type"]].head())
 
