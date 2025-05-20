@@ -4,6 +4,8 @@ import random
 from retry import retry
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 import json
+import pandas as pd
+from utils import extract_fallacy_data
 
 
 # opensource AI models
@@ -120,9 +122,20 @@ def zero_shot():
 
 def one_shot():
 
-    with open("questions.json", "r") as f:
-        data = json.load(f)
+    training_data = extract_fallacy_data("data/RedditDataset/train.txt")
+    validation_data = extract_fallacy_data("data/RedditDataset/dev.txt")
+    test_data = extract_fallacy_data("data/RedditDataset/test.txt")
 
+    # to test if the data was extracted correctly 
+    # for entry in training_data[:2]:
+    #     print(entry)
+
+    
+
+
+
+    # with open("questions.json", "r") as f:
+    #     data = json.load(f)
 
     # print("Keys found:", data.keys())  # Should include 'one-shot'
 
@@ -135,32 +148,32 @@ def one_shot():
     #     print("Q2:", pair[1])
     # Dictionary to store question-answer pairs
 
-    results = {}
+    # results = {}
 
-    # Iterate over each question pair
-    for question_pair in data["one-shot"]:
-        completion, mode = create_completion_oneshot(question_pair)
+    # # Iterate over each question pair
+    # for question_pair in data["one-shot"]:
+    #     completion, mode = create_completion_oneshot(question_pair)
 
-        # Get the full response from the model
-        full_response = completion.choices[0].message.content.strip()
+    #     # Get the full response from the model
+    #     full_response = completion.choices[0].message.content.strip()
 
-        # Print it to see the output format
-        print("Full Response:\n", full_response)
+    #     # Print it to see the output format
+    #     print("Full Response:\n", full_response)
 
-        # Try to split the response into two answers (by newline or punctuation)
-        answers = full_response.split('\n')  # Or use .split('.') if separated by periods
+    #     # Try to split the response into two answers (by newline or punctuation)
+    #     answers = full_response.split('\n')  # Or use .split('.') if separated by periods
 
-        # Basic fallback to handle short outputs
-        answer1 = answers[0].strip() if len(answers) > 0 else ""
-        answer2 = answers[1].strip() if len(answers) > 1 else ""
+    #     # Basic fallback to handle short outputs
+    #     answer1 = answers[0].strip() if len(answers) > 0 else ""
+    #     answer2 = answers[1].strip() if len(answers) > 1 else ""
 
-        # Save under each question
-        results[question_pair[0]] = {"answer": answer1}
-        results[question_pair[1]] = {"answer": answer2}
+    #     # Save under each question
+    #     results[question_pair[0]] = {"answer": answer1}
+    #     results[question_pair[1]] = {"answer": answer2}
 
-        # Save the answers in a JSON file
-        with open("one_shot.json", "w") as f:
-            json.dump(results, f, indent=4)
+    #     # Save the answers in a JSON file
+    #     with open("one_shot.json", "w") as f:
+    #         json.dump(results, f, indent=4)
 
 
 
