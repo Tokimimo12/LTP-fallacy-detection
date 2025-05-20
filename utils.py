@@ -26,3 +26,18 @@ def extract_fallacy_data(file_path):
     return extracted_data
 
 
+def get_overall_fallacy_flag(flag_list_str):
+    flags = ast.literal_eval(flag_list_str)
+    return "fallacy" if flags.count("fallacy") > flags.count("non_fallacy") else "non_fallacy"
+
+
+def get_overall_fallacy_type(type_list_str, flag_list_str):
+    types = ast.literal_eval(type_list_str)
+    flags = ast.literal_eval(flag_list_str)
+
+    if flags.count("fallacy") > flags.count("non_fallacy"):
+        # Include only types for tokens marked as  "fallacy" and exclude "none"
+        filtered = [t for t, f in zip(types, flags) if f == "fallacy" and t != "none"]
+        if filtered:
+            return Counter(filtered).most_common(1)[0][0]
+    return "none"

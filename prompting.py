@@ -5,7 +5,7 @@ from retry import retry
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 import json
 import pandas as pd
-from utils import extract_fallacy_data
+from utils import extract_fallacy_data, get_overall_fallacy_flag, get_overall_fallacy_type
 
 
 # opensource AI models
@@ -122,15 +122,19 @@ def zero_shot():
 
 def one_shot():
 
-    training_data = extract_fallacy_data("data/RedditDataset/train.txt")
-    validation_data = extract_fallacy_data("data/RedditDataset/dev.txt")
-    test_data = extract_fallacy_data("data/RedditDataset/test.txt")
+    training_data = pd.DataFrame(extract_fallacy_data("data/RedditDataset/train.txt"))
+    validation_data = pd.DataFrame(extract_fallacy_data("data/RedditDataset/dev.txt"))
+    test_data = pd.DataFrame(extract_fallacy_data("data/RedditDataset/test.txt"))
 
-    # to test if the data was extracted correctly 
-    # for entry in training_data[:2]:
-    #     print(entry)
 
-    
+    training_data["overall_fallacy_flag"] = training_data["fallacy_flag"].apply(get_overall_fallacy_flag)
+    training_data["overall_fallacy_type"] = training_data.apply(lambda row: get_overall_fallacy_type(row["fallacy_type"], row["fallacy_flag"]), axis=1)
+
+
+    print(training_data[["fallacy_flag", "fallacy_type", "overall_fallacy_flag", "overall_fallacy_type"]].head())
+
+
+
 
 
 
