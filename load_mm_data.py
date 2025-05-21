@@ -4,6 +4,7 @@ import pandas as pd
 import logging
 from pathlib import Path
 
+
 # Function from the MAMKIT website "https://nlp-unibo.github.io/mm-argfallacy/2025/"
 # This takes quite some time since it has to download the audio even tho we dont use it
 def download_data(task_name = 'afd'):
@@ -33,6 +34,10 @@ def data_to_clean_csv(task = "detect"): # Task name either detect or classify
         
     df_filtered = df_filtered.dropna() # Remove rows with empty values
     df_filtered.to_csv("data/" + task_name + '_data_processed.csv')
+
+
+
+
 
 data_to_clean_csv(task="classify")
 
