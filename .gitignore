@@ -2,4 +2,7 @@
 .venv
 LTPenf/ 
 
+data/data_afc
+data/data_afd
+
 
