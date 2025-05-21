@@ -29,6 +29,8 @@ def data_to_clean_csv(task = "detect"): # Task name either detect or classify
         df_filtered = df[['sentence', 'label']] # Only keep the sentence and label (if fallacy or not)
     else:
         df_filtered = df[['snippet', 'fallacy']] # Only keep snippet (of text) and label (of fallacy type)
+        # Appeal to Emotion = 0, Appeal to Authority = 1, Ad Hominem = 2, False Cause = 3, Slippery slope = 4, Slogans = 5
+        
     df_filtered = df_filtered.dropna() # Remove rows with empty values
     df_filtered.to_csv("data/" + task_name + '_data_processed.csv')
 
