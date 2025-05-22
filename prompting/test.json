@@ -1,0 +1,32 @@
+[
+    {
+        "input_statement": "You can't trust anything John says about climate change; he's not a scientist.",
+        "fallacious": "Yes",
+        "category": "Ad Hominem",
+        "specific_type": "General"
+    },
+    {
+        "input_statement": "And there are other ways of squeezing this budget without constantly picking on our senior citizens and the most vulnerable in American life.",
+        "fallacious": "1. no",
+        "category": "2. Appeal to Emotion",
+        "specific_type": "3. None"
+    },
+    {
+        "input_statement": "And you let those people go with the guidelines of overall policy, not looking over their shoulder and nitpicking the manner in which they go at the job.",
+        "fallacious": "1. no",
+        "category": "2. None",
+        "specific_type": "3. None"
+    },
+    {
+        "input_statement": "In mine, I happen to believe in the people and believe that the people are supposed to be dominant in our society -- that they, not government, are to have control of their own affairs to the greatest extent possible, with an orderly society.",
+        "fallacious": "1. No",
+        "category": "2. None",
+        "specific_type": "3. None"
+    },
+    {
+        "input_statement": "That's why faith in the United States is pure and unpolluted by the intervention of politicians.",
+        "fallacious": "1. Yes",
+        "category": "2. Slogan",
+        "specific_type": "3. General"
+    }
+]
