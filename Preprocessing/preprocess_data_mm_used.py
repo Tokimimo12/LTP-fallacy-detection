@@ -34,7 +34,9 @@ def create_full_data_file():
     full_data['fallacy_class'] = fc.iloc[:, 2]
 
 
-    full_data.rename(columns={full_data.columns[1]: 'fallacy_detection'}, inplace=True)
+    full_data.rename(columns={full_data.columns[0]: 'ID'}, inplace=True)
+    full_data.rename(columns={full_data.columns[2]: 'fallacy_detection'}, inplace=True)
+    full_data.rename(columns={full_data.columns[1]: 'snippet'}, inplace=True)
     full_data.to_csv("../data/full_data_processed.csv", index=False)
 
 

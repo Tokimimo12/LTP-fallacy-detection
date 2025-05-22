@@ -1,4 +1,4 @@
-Unnamed: 0,fallacy_detection,label,fallacy_category,fallacy_class
+ID,snippet,fallacy_detection,fallacy_category,fallacy_class
 0,I have a plan -- not a secret plan.,0.0,0.0,0.0
 1,"As a matter of fact, it is the economic recovery program that we presented when I took office in 1981.",0.0,0.0,0.0
 2,"It is true that earlier, working with some very prominent economists, I had come up, during the campaign, with an economic program that I thought could rectify the great problems confronting us -- the double-digit inflation, the high tax rates that I think were hurting the economy, the stagflation that we were undergoing.",0.0,1.0,1.0
