@@ -56,15 +56,14 @@ def train(train_loader, val_loader, num_epochs=20):
             # Run model
             detection, group, classify = model.forward(ids, attention_mask)
 
+    
             # Caluclate loss for each head
-            detection_label, group_label, classify_label = torch.tensor(labels).to(device)
-            # detection_label = labels[:, 0].long()
-            # group_label = labels[:, 1].long()
-            # classify_label = labels[:, 2].long()
+            detection_label, group_label, classify_label = [x.to(device).long() for x in labels]
 
             detection_loss = criterion(detection, detection_label)
-            group_loss = criterion(group, group_label.unsqueeze(dim=0))
-            classify_loss = criterion(classify, classify_label.unsqueeze(dim=0))
+            group_loss = criterion(group, group_label)
+            classify_loss = criterion(classify, classify_label)
+
 
             # If detection label is 0 (no fallacy), then other heads loss not added (cuz multiplied with 0)
             total_loss = detection_loss + detection_label * group_loss + detection_label * classify_loss 
@@ -119,7 +118,10 @@ if __name__ == "__main__":
 
     # make the texts and labels into lists
     snippets = data["snippet"].tolist()
-    labels = data[["fallacy_detection", "fallacy_category", "fallacy_class"]].values.tolist()
+    labels = data[["fallacy_detection", "category", "class"]].values.tolist()
+
+    # shuffles the entire data before splitting 
+    data = data.sample(frac=1, random_state=42).reset_index(drop=True)
 
     # data splitting train/val/test (80/10/10)
     train_snippets, temp_snippets, train_labels, temp_labels = train_test_split(

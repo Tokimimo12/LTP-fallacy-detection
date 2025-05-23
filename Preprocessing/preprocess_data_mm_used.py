@@ -43,9 +43,9 @@ def create_full_data_file():
     afd_subset = afd_filtered.iloc[:, [1, 2]].copy()
     afd_subset.columns = ["snippet", "fallacy_detection"]
 
-    # placeholders - -1 means there is no label 
-    afd_subset["category"] = -1
-    afd_subset["class"] = -1
+    # placeholders - 0 means there is no label 
+    afd_subset["category"] = 0
+    afd_subset["class"] = 0
     afd_subset["ID"] = -1
 
     afd_subset = afd_subset[["ID", "snippet", "fallacy_detection", "category", "class"]]
@@ -54,7 +54,7 @@ def create_full_data_file():
 
     combined_df["ID"] = range(1, len(combined_df) + 1)
     final_df = combined_df[["ID", "snippet", "fallacy_detection", "category", "class"]]
-    final_df.to_csv("../data/full_data_processed.csv", index=False)
+    final_df.to_csv("../data/MM_USED_fallacy/full_data_processed.csv", index=False)
 
 
 # fallacy_to_category()
