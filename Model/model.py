@@ -7,7 +7,7 @@ class MultiTaskDistilBert(nn.Module):
         
         self.detection_head = nn.Linear(in_features=hidden_size, out_features=2)
         self.group_head = nn.Linear(in_features=hidden_size, out_features=3)
-        self.classify_head = nn.Linear(in_features=hidden_size, out_features=2)
+        self.classify_head = nn.Linear(in_features=hidden_size, out_features=6)
 
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
