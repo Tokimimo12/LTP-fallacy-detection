@@ -1,4 +1,5 @@
 import pandas as pd
+from itertools import islice
 
 
 def fallacy_to_category():
@@ -23,21 +24,37 @@ def fallacy_to_category():
 
 
 
+
 def create_full_data_file():
+    # Load data
+    afd = pd.read_csv("../data/MM_USED_fallacy/afd_data_processed.csv")
+    afc = pd.read_csv("../data/MM_USED_fallacy/afc_data_processed.csv")
+    f_cat = pd.read_csv("../data/MM_USED_fallacy/category_data_processed.csv")
 
-    fd = pd.read_csv("../data/afd_data_processed.csv")
-    fc = pd.read_csv("../data/afc_data_processed.csv")
-    f_cat = pd.read_csv("../data/category_data_processed.csv")
+  
+    # Add the category and fallacy detection columns to afc
+    afc.columns = ["ID", "snippet", "class"]
+    afc["category"] = f_cat.iloc[:, 1]
+    afc["fallacy_detection"] = 1
+    afc = afc[["ID", "snippet", "fallacy_detection", "category", "class"]]
 
-    full_data = fd.copy()
-    full_data['fallacy_category'] = f_cat.iloc[:, 1]
-    full_data['fallacy_class'] = fc.iloc[:, 2]
+    # Filter afd where label (3rd col) == 0. We only want to add the no fallacy ones
+    afd_filtered = afd[afd.iloc[:, 2] == 0]
+    afd_subset = afd_filtered.iloc[:, [1, 2]].copy()
+    afd_subset.columns = ["snippet", "fallacy_detection"]
+
+    # placeholders - -1 means there is no label 
+    afd_subset["category"] = -1
+    afd_subset["class"] = -1
+    afd_subset["ID"] = -1
+
+    afd_subset = afd_subset[["ID", "snippet", "fallacy_detection", "category", "class"]]
+    combined_df = pd.concat([afc, afd_subset], ignore_index=True)
 
 
-    full_data.rename(columns={full_data.columns[0]: 'ID'}, inplace=True)
-    full_data.rename(columns={full_data.columns[2]: 'fallacy_detection'}, inplace=True)
-    full_data.rename(columns={full_data.columns[1]: 'snippet'}, inplace=True)
-    full_data.to_csv("../data/full_data_processed.csv", index=False)
+    combined_df["ID"] = range(1, len(combined_df) + 1)
+    final_df = combined_df[["ID", "snippet", "fallacy_detection", "category", "class"]]
+    final_df.to_csv("../data/full_data_processed.csv", index=False)
 
 
 # fallacy_to_category()
