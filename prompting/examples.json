@@ -1,17 +1,5 @@
 [
     {
-        "input_statement": "You can't trust anything John says about climate change; he's not a scientist.",
-        "fallacious": "Yes",
-        "category": "Ad Hominem",
-        "specific_type": "General"
-    },
-    {
-        "input_statement": "And there are other ways of squeezing this budget without constantly picking on our senior citizens and the most vulnerable in American life.",
-        "fallacious": "1. no",
-        "category": "2. Appeal to Emotion",
-        "specific_type": "3. None"
-    },
-    {
         "input_statement": "And you let those people go with the guidelines of overall policy, not looking over their shoulder and nitpicking the manner in which they go at the job.",
         "fallacious": "1. no",
         "category": "2. None",
