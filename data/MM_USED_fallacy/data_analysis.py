@@ -50,10 +50,10 @@ def print_distribution(df, column_name, only_where_fallacy=True):
     print(counts.round(2).astype(str) + " %")
 
 def main():
-    df = pd.read_csv('full_data_preprocessed.csv')
+    df = pd.read_csv('aug_data.csv')
 
     # Set this to True or False depending on the data you're using
-    is_augmented = False
+    is_augmented = True
 
     plot_fallacy_detection_distribution(df, augmented=is_augmented)
     plot_category_distribution(df, augmented=is_augmented)
