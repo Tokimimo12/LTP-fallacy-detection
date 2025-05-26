@@ -9,7 +9,7 @@ os.makedirs(SAVE_DIR, exist_ok=True)
 def plot_fallacy_detection_distribution(df, augmented=False):
     suffix = "- augmented" if augmented else ""
     
-    sns.countplot(x='fallacy_detection', hue='fallacy_detection', data=df, palette='Set3', legend=False)
+    sns.countplot(x='fallacy_detection', hue='fallacy_detection', data=df, palette='Set2', legend=False)
     plt.title(f'Distribution of Fallacy Detection{suffix}')
     plt.xlabel('Fallacy Detection')
     plt.ylabel('Count')
@@ -39,7 +39,7 @@ def plot_category_distribution(df, augmented=False):
     sns.countplot(
         x='category',
         data=filtered_df,
-        palette='Set3',
+        palette='Set2',
         order=order,
         legend=False
     )
@@ -69,7 +69,7 @@ def plot_class_distribution(df, augmented=False):
     # Filter dataframe to only rows where fallacy_detection == 1
     filtered_df = df[df['fallacy_detection'] == 1]
 
-    sns.countplot(x='class', data=filtered_df, palette='Set3', legend=False)
+    sns.countplot(x='class', data=filtered_df, palette='Set2', legend=False)
 
     plt.title(f'Distribution of Fallacy Classes {suffix}')
     plt.xlabel('Fallacy Class')
