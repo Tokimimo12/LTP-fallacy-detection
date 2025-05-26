@@ -8,9 +8,28 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 from model import MultiTaskDistilBert
 from torch.utils.data import DataLoader, Dataset
+import matplotlib.pyplot as plt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from data.MM_USED_fallacy.MM_Dataset import MM_Dataset
+
+
+def plot_losses(train_losses, val_losses):
+    plt.figure(figsize=(8,6))
+    plt.plot(range(1, len(train_losses)+1), train_losses, label='Train Loss')
+    plt.plot(range(1, len(val_losses)+1), val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss over Epochs')
+    plt.legend()
+    plt.grid(True)
+    
+    save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Plots'))
+    os.makedirs(save_dir, exist_ok=True)
+    
+    save_path = os.path.join(save_dir, "loss_plot.png")
+    plt.savefig(save_path)
+
 
 
 def tokenize(data_batch, max_length=50):
@@ -40,6 +59,8 @@ def train(train_loader, val_loader, num_epochs=20):
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
+    train_losses = []
+    val_losses = []
 
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch+1}/{num_epochs}")
@@ -69,18 +90,18 @@ def train(train_loader, val_loader, num_epochs=20):
             loss.backward()
             optimizer.step()
 
-            # Print loss every 5 batches or at the end of the epoch
             if (batch_idx + 1) % 5 == 0 or (batch_idx + 1) == len(train_loader):
                 print(f"  [Batch {batch_idx+1}/{len(train_loader)}] Loss: {loss.item():.4f}")
 
         avg_train_loss = epoch_loss / batch_count
-
+        train_losses.append(avg_train_loss)
         print(f"\n→ Avg Train Loss: {avg_train_loss:.4f}")
 
         val_loss = validate(model, val_loader, criterion, device)
+        val_losses.append(val_loss)
         print(f"→ Validation Loss: {val_loss:.4f}\n{'-'*50}")
 
-        validate(model, val_loader, criterion, device)
+    plot_losses(train_losses, val_losses)
 
 
 def validate(model, val_loader, criterion, device):
@@ -180,7 +201,7 @@ if __name__ == "__main__":
 
     print(train_loader.dataset[0])
 
-    train(train_loader, val_loader, num_epochs=20)
+    train(train_loader, val_loader, num_epochs=5)
 
     
 
