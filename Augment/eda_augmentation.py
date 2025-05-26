@@ -16,6 +16,9 @@ for index, row in tqdm(data.iterrows(), total=data.shape[0]):
     f_category = row['category']
     f_class = row['class']
 
+    if f_category == -1 or f_class == -1:
+        print(f"Skipping row {index} due to missing category or class.")
+
     if len(sentence.split()) > 1:
         aug_sentences = eda(sentence, alpha_sr=0.1, alpha_ri=0.1, alpha_rs=0.1, p_rd=0.1, num_aug=5)
 
