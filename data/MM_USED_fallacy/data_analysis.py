@@ -34,15 +34,10 @@ def plot_category_distribution(df, augmented=False):
         2: "Fallacy of Logic"
     }
 
-    order = list(category_mapping.keys())  # [0, 1, 2]
+    order = list(category_mapping.keys()) 
 
-    sns.countplot(
-        x='category',
-        data=filtered_df,
-        palette='Set2',
-        order=order,
-        legend=False
-    )
+    sns.countplot(x='category', hue='category', data=filtered_df, palette='Set2', order=order, legend=False)
+
 
     plt.title(f'Distribution of Fallacy Categories{suffix}')
     plt.xlabel('Fallacy Category')
@@ -69,7 +64,7 @@ def plot_class_distribution(df, augmented=False):
     # Filter dataframe to only rows where fallacy_detection == 1
     filtered_df = df[df['fallacy_detection'] == 1]
 
-    sns.countplot(x='class', data=filtered_df, palette='Set2', legend=False)
+    sns.countplot(x='class', hue='class', data=filtered_df, palette='Set2', legend=False)
 
     plt.title(f'Distribution of Fallacy Classes {suffix}')
     plt.xlabel('Fallacy Class')
