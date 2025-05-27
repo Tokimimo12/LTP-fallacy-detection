@@ -174,7 +174,7 @@ def validate(model, val_loader, criterion, device):
 
 
 if __name__ == "__main__":
-    data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
+    data = pd.read_csv("../data/MM_USED_fallacy/aug_data.csv")
 
     # make the texts and labels into lists
     snippets = data["snippet"].tolist()
