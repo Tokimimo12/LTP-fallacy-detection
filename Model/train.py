@@ -9,6 +9,8 @@ import pandas as pd
 from model import MultiTaskDistilBert
 from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
+from tqdm import tqdm   
+from Augment.eda_augmentation import eda
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from data.MM_USED_fallacy.MM_Dataset import MM_Dataset
@@ -191,15 +193,32 @@ if __name__ == "__main__":
         temp_snippets, temp_labels, test_size=0.5, random_state=42
     )
 
+
+    augmented_snippets = []
+    augmented_labels = []   
+        
+    for snippet, label in tqdm(zip(train_snippets, train_labels), total=len(train_snippets), desc="Augmenting training data"):
+        fallacy_detection, category, fallacy_class = label    
+
+        if len(snippet.split()) > 1:
+            augmented = eda(snippet, alpha_sr=0.1, alpha_ri=0.1, alpha_rs=0.1, p_rd=0.1, num_aug=5)
+            augmented = augmented[:-1]  # remove original
+
+            augmented_snippets.extend(augmented)
+            augmented_labels.extend([label] * len(augmented))
+
+    train_snippets += augmented_snippets
+    train_labels += augmented_labels
+
+
     train_dataset = MM_Dataset(train_snippets, train_labels)
     val_dataset = MM_Dataset(val_snippets, val_labels)
     test_dataset = MM_Dataset(test_snippets, test_labels)
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=8)
-    test_loader = DataLoader(test_dataset, batch_size=8)
+    val_loader = DataLoader(val_dataset, batch_size=32)
+    test_loader = DataLoader(test_dataset, batch_size=32)
 
-    print(train_loader.dataset[0])
 
     train(train_loader, val_loader, num_epochs=5)
 
