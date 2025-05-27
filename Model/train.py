@@ -9,11 +9,14 @@ import pandas as pd
 from model import MultiTaskDistilBert
 from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
-from tqdm import tqdm   
-from Augment.eda_augmentation import eda
+from tqdm import tqdm  
+import nltk 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from Augment.eda import eda
 from data.MM_USED_fallacy.MM_Dataset import MM_Dataset
+
+nltk.download('wordnet')
 
 
 def plot_losses(train_losses, val_losses):
