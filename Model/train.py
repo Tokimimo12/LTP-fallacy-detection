@@ -108,6 +108,13 @@ def train(train_loader, val_loader, num_epochs=20):
 
     plot_losses(train_losses, val_losses)
 
+    # save the model
+    save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Models'))
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, "multi_task_distilbert.pth")
+    torch.save(model.state_dict(), save_path)
+        
+
 
 def validate(model, val_loader, criterion, device):
     model.eval()
@@ -123,6 +130,12 @@ def validate(model, val_loader, criterion, device):
             detection, group, classify = model(ids, attention_mask)
 
             detection_label, group_label, classify_label = [x.to(device).long() for x in labels]
+
+            # print the ground truth and predictions
+            print("Ground Truth Labels: ", labels)
+            print("Detection Label: ", detection_label)
+            print("Group Label: ", group_label) 
+            print("Classify Label: ", classify_label)
 
             detection_loss = criterion(detection, detection_label)
             group_loss = criterion(group, group_label)
@@ -223,7 +236,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=32)
 
 
-    train(train_loader, val_loader, num_epochs=5)
+    train(train_loader, val_loader, num_epochs=1)
 
     
 
