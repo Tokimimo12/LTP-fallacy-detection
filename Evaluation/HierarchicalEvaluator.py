@@ -52,7 +52,7 @@ class HierarchicalEvaluator:
                     self.category_tp += 1
                 else:
                     self.category_fp += 1
-                    self.category_fn
+                    self.category_fn +=1
 
         # -------------- Class level -------------
         if detection_gt:
