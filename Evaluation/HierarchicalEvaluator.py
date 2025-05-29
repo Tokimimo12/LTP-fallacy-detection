@@ -123,3 +123,16 @@ class HierarchicalEvaluator:
                 "f1": class_[3]
             }
         }
+    
+    # this function makes it easier to print the results in a nice way
+    def __str__(self):
+        metrics = self.evaluate()
+        output = []
+        for level, values in metrics.items():
+            output.append(f"{level.capitalize()} Metrics:")
+            for metric, value in values.items():
+                output.append(f"  {metric.capitalize()}: {value:.4f}")
+            output.append("")
+
+        return "\n".join(output).strip()
+        
