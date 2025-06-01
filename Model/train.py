@@ -39,7 +39,7 @@ def train(train_loader, val_loader, num_epochs=20):
     # tokenized_val_data = tokenize(val_data, max_length=4)
     model = get_model(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(reduction='none')
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     for i in range(num_epochs):
@@ -58,7 +58,15 @@ def train(train_loader, val_loader, num_epochs=20):
 
     
             # Caluclate loss for each head
-            detection_label, group_label, classify_label = [x.to(device).long() for x in labels]
+            processed_labels = []
+            for x in labels:
+                if x.dtype == torch.float64:
+                    x = x.float()  # Convert to float32 first
+                if x.dtype != torch.long:
+                    x = x.long()   # Then to long (int64)
+                processed_labels.append(x.to(device))
+
+            detection_label, group_label, classify_label = processed_labels
 
             detection_loss = criterion(detection, detection_label)
             group_loss = criterion(group, group_label)
@@ -66,7 +74,8 @@ def train(train_loader, val_loader, num_epochs=20):
 
 
             # If detection label is 0 (no fallacy), then other heads loss not added (cuz multiplied with 0)
-            total_loss = detection_loss + detection_label * group_loss + detection_label * classify_loss 
+            mask = detection_label.float()
+            total_loss = detection_loss + mask * group_loss + mask * classify_loss 
             loss = torch.mean(total_loss)
 
             print("Loss: ", loss.item())
