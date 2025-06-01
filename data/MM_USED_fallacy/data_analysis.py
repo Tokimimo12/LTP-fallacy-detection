@@ -6,59 +6,106 @@ import os
 SAVE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../Saved_Plots'))
 os.makedirs(SAVE_DIR, exist_ok=True)
 
-
-def plot_fallacy_detection_distribution(df):
-    sns.countplot(x='fallacy_detection', hue='fallacy_detection', data=df, palette='Set3', legend=False)
-    plt.title('Distribution of Fallacy Detection')
-    plt.xlabel('Fallacy Detected (1=True, 0=False)')
+def plot_fallacy_detection_distribution(df, augmented=False):
+    suffix = "- augmented" if augmented else ""
+    
+    sns.countplot(x='fallacy_detection', hue='fallacy_detection', data=df, palette='Set2', legend=False)
+    plt.title(f'Distribution of Fallacy Detection{suffix}')
+    plt.xlabel('Fallacy Detection')
     plt.ylabel('Count')
+
+
+    plt.xticks(ticks=[0, 1], labels=['Non-Fallacious', 'Fallacious'])
+    
     plt.tight_layout()
-    plt.savefig(os.path.join(SAVE_DIR, 'fallacy_detection_distribution.png'))
+    plt.savefig(os.path.join(SAVE_DIR, f'fallacy_detection_distribution{suffix}.png'))
     plt.clf()
 
 
-def plot_category_distribution(df):
+def plot_category_distribution(df, augmented=False):
+    suffix = "- augmented" if augmented else ""
+
     filtered_df = df[df['fallacy_detection'] == 1]
-    sns.countplot(x='category', hue='category', data=filtered_df, palette='Set3', legend=False)
-    plt.title('Distribution of Fallacy Categories (only when fallacy detected)')
+
+    # Mapping category indices to names
+    category_mapping = {
+        0: "Fallacy of Emotion",
+        1: "Fallacy of Credibility",
+        2: "Fallacy of Logic"
+    }
+
+    order = list(category_mapping.keys()) 
+
+    sns.countplot(x='category', hue='category', data=filtered_df, palette='Set2', order=order, legend=False)
+
+
+    plt.title(f'Distribution of Fallacy Categories{suffix}')
     plt.xlabel('Fallacy Category')
     plt.ylabel('Count')
+
+
+    plt.xticks(
+        ticks=range(len(order)), 
+        labels=[category_mapping[k] for k in order],
+        rotation=30,
+        ha='right'
+    )
+
     plt.tight_layout()
-    plt.savefig(os.path.join(SAVE_DIR, 'category_distribution.png'))
+
+    # Make sure SAVE_DIR is defined in your script
+    plt.savefig(os.path.join(SAVE_DIR, f'category_distribution{suffix}.png'))
     plt.clf()
 
 
-def plot_class_distribution(df):
+def plot_class_distribution(df, augmented=False):
+    suffix = "- augmented" if augmented else ""
+
+    # Filter dataframe to only rows where fallacy_detection == 1
     filtered_df = df[df['fallacy_detection'] == 1]
-    sns.countplot(x='class', hue='class', data=filtered_df, palette='Set3', legend=False)
-    plt.title('Distribution of Fallacy Classes (only when fallacy detected)')
+
+    sns.countplot(x='class', hue='class', data=filtered_df, palette='Set2', legend=False)
+
+    plt.title(f'Distribution of Fallacy Classes {suffix}')
     plt.xlabel('Fallacy Class')
     plt.ylabel('Count')
-    plt.tight_layout()
-    plt.savefig(os.path.join(SAVE_DIR, 'class_distribution.png'))
-    plt.clf()
 
+    class_mapping = {
+        0: "Appeal to Emotion",
+        1: "Appeal to Authority",
+        2: "Ad Hominem",
+        3: "False Cause",
+        4: "Slippery Slope",
+        5: "Slogans"
+    }
+
+    plt.xticks(ticks=list(class_mapping.keys()), labels=list(class_mapping.values()), rotation=30, ha='right')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(SAVE_DIR, f'class_distribution{suffix}.png'))
+    plt.clf()
 
 def print_distribution(df, column_name, only_where_fallacy=True):
     if only_where_fallacy:
-        filtered_df = df[df['fallacy_detection'] == 1]
+        df = df[df['fallacy_detection'] == 1]
 
-    counts = filtered_df[column_name].value_counts(normalize=True) * 100
+    counts = df[column_name].value_counts(normalize=True) * 100
     print(f"\nDistribution for '{column_name}' (fallacy_detection == 1):")
     print(counts.round(2).astype(str) + " %")
-
 
 def main():
     df = pd.read_csv('full_data_processed.csv')
 
-    plot_fallacy_detection_distribution(df)
-    plot_category_distribution(df)
-    plot_class_distribution(df)
+    # Set this to True or False depending on the data you're using
+    is_augmented = False
+
+    plot_fallacy_detection_distribution(df, augmented=is_augmented)
+    plot_category_distribution(df, augmented=is_augmented)
+    plot_class_distribution(df, augmented=is_augmented)
 
     print_distribution(df, 'fallacy_detection', only_where_fallacy=False)
     print_distribution(df, 'category', only_where_fallacy=True)
     print_distribution(df, 'class', only_where_fallacy=True)
-
 
 if __name__ == '__main__':
     main()
