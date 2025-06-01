@@ -13,8 +13,10 @@ from tqdm import tqdm
 import nltk 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from Augment.eda import eda
+from Augment.eda_augmentation import eda_augmentation
 from data.MM_USED_fallacy.MM_Dataset import MM_Dataset
+from data.MM_USED_fallacy.data_analysis import plot_fallacy_detection_distribution, plot_category_distribution, plot_class_distribution
+from Evaluation.HierarchicalEvaluator import HierarchicalEvaluator
 
 nltk.download('wordnet')
 
@@ -66,13 +68,17 @@ def train(train_loader, val_loader, num_epochs=20):
     train_losses = []
     val_losses = []
 
+
+    print(f"Using device: {device}")
+
+
     for epoch in range(num_epochs):
-        print(f"\nEpoch {epoch+1}/{num_epochs}")
+        # print(f"\nEpoch {epoch+1}/{num_epochs}")
         model.train()
         epoch_loss = 0
         batch_count = 0
 
-        for batch_idx, (snippets, labels) in enumerate(train_loader):
+        for batch_idx, (snippets, labels) in tqdm(enumerate(train_loader)):
             batch_count += 1
             tokenized = tokenize(list(snippets), max_length=50)[0]
             ids = tokenized["input_ids"].to(device)
@@ -108,8 +114,8 @@ def train(train_loader, val_loader, num_epochs=20):
             loss.backward()
             optimizer.step()
 
-            if (batch_idx + 1) % 5 == 0 or (batch_idx + 1) == len(train_loader):
-                print(f"  [Batch {batch_idx+1}/{len(train_loader)}] Loss: {loss.item():.4f}")
+            # if (batch_idx + 1) % 5 == 0 or (batch_idx + 1) == len(train_loader):
+            #     print(f"  [Batch {batch_idx+1}/{len(train_loader)}] Loss: {loss.item():.4f}")
 
         avg_train_loss = epoch_loss / batch_count
         train_losses.append(avg_train_loss)
@@ -126,13 +132,15 @@ def train(train_loader, val_loader, num_epochs=20):
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, "multi_task_distilbert.pth")
     torch.save(model.state_dict(), save_path)
-        
+
 
 
 def validate(model, val_loader, criterion, device):
     model.eval()
     total_loss = 0
     count = 0
+
+    evaluator = HierarchicalEvaluator()
 
     with torch.no_grad():
         for snippets, labels in val_loader:
@@ -145,10 +153,10 @@ def validate(model, val_loader, criterion, device):
             detection_label, group_label, classify_label = [x.to(device).long() for x in labels]
 
             # print the ground truth and predictions
-            print("Ground Truth Labels: ", labels)
-            print("Detection Label: ", detection_label)
-            print("Group Label: ", group_label) 
-            print("Classify Label: ", classify_label)
+            # print("Ground Truth Labels: ", labels)
+            # print("Detection Label: ", detection_label)
+            # print("Group Label: ", group_label) 
+            # print("Classify Label: ", classify_label)
 
             detection_loss = criterion(detection, detection_label)
             group_loss = criterion(group, group_label)
@@ -160,7 +168,29 @@ def validate(model, val_loader, criterion, device):
             total_loss += batch_loss.item()
             count += 1
 
+
+            # Evaluate predictions 
+            detection_preds = torch.argmax(detection, dim=1).cpu().tolist()
+            group_preds = torch.argmax(group, dim=1).cpu().tolist()
+            classify_preds = torch.argmax(classify, dim=1).cpu().tolist()
+
+            detection_gt = detection_label.cpu().tolist()
+            group_gt = group_label.cpu().tolist()
+            classify_gt = classify_label.cpu().tolist()
+
+            # Add predictions and labels to evaluator
+            for det_p, grp_p, cls_p, det_g, grp_g, cls_g in zip(detection_preds, group_preds, classify_preds, detection_gt, group_gt, classify_gt):
+                evaluator.add(
+                    predictions=(det_p, grp_p, cls_p),
+                    ground_truth=(det_g, grp_g, cls_g)
+                )
+
+
     avg_loss = total_loss / count if count > 0 else 0
+
+    print("\nValidation Metrics:")
+    print(evaluator)
+
     return avg_loss
 
 
@@ -223,21 +253,23 @@ if __name__ == "__main__":
     )
 
 
-    augmented_snippets = []
-    augmented_labels = []   
-        
-    for snippet, label in tqdm(zip(train_snippets, train_labels), total=len(train_snippets), desc="Augmenting training data"):
-        fallacy_detection, category, fallacy_class = label    
 
-        if len(snippet.split()) > 1:
-            augmented = eda(snippet, alpha_sr=0.1, alpha_ri=0.1, alpha_rs=0.1, p_rd=0.1, num_aug=5)
-            augmented = augmented[:-1]  # remove original
+    train_data = pd.DataFrame({
+        "snippet": train_snippets,
+        "fallacy_detection": [label[0] for label in train_labels],
+        "category": [label[1] for label in train_labels],
+        "class": [label[2] for label in train_labels]
+    })
 
-            augmented_snippets.extend(augmented)
-            augmented_labels.extend([label] * len(augmented))
 
-    train_snippets += augmented_snippets
-    train_labels += augmented_labels
+    augmented_train_data = eda_augmentation(train_data)
+
+    plot_fallacy_detection_distribution(augmented_train_data, augmented=True)
+    plot_category_distribution(augmented_train_data, augmented=True)
+    plot_class_distribution(augmented_train_data, augmented=True)
+
+    train_snippets = augmented_train_data["snippet"].tolist()
+    train_labels = augmented_train_data[["fallacy_detection", "category", "class"]].values.tolist()
 
 
     train_dataset = MM_Dataset(train_snippets, train_labels)
@@ -249,7 +281,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=32)
 
 
-    train(train_loader, val_loader, num_epochs=1)
+    train(train_loader, val_loader, num_epochs=5)
 
     
 

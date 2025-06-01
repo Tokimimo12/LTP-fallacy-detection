@@ -34,9 +34,7 @@ def plot_category_distribution(df, augmented=False):
         2: "Fallacy of Logic"
     }
 
-    order = list(category_mapping.keys()) 
-
-    sns.countplot(x='category', hue='category', data=filtered_df, palette='Set2', order=order, legend=False)
+    sns.countplot(x='category', hue='category', data=filtered_df, palette='Set2', legend=False)
 
 
     plt.title(f'Distribution of Fallacy Categories{suffix}')
@@ -44,12 +42,7 @@ def plot_category_distribution(df, augmented=False):
     plt.ylabel('Count')
 
 
-    plt.xticks(
-        ticks=range(len(order)), 
-        labels=[category_mapping[k] for k in order],
-        rotation=30,
-        ha='right'
-    )
+    plt.xticks(ticks=list(category_mapping.keys()), labels=list(category_mapping.values()), rotation=30, ha='right')
 
     plt.tight_layout()
 
