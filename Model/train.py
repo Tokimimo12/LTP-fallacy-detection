@@ -58,9 +58,8 @@ def get_model(device):
 
 def train(train_loader, val_loader, num_epochs=20):
 
-    model = get_model()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    model = get_model(device=torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"))
+    device = next(model.parameters()).device
     criterion = nn.CrossEntropyLoss(reduction='none')
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
