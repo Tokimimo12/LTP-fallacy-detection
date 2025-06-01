@@ -60,11 +60,10 @@ def get_model(device):
 
 def train(train_loader, val_loader, num_epochs=20):
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
-    
-
-    model = get_model(device)
-    criterion = nn.CrossEntropyLoss()
+    model = get_model()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    criterion = nn.CrossEntropyLoss(reduction='none')
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     train_losses = []
@@ -86,14 +85,28 @@ def train(train_loader, val_loader, num_epochs=20):
             ids = tokenized["input_ids"].to(device)
             attention_mask = tokenized["attention_mask"].to(device)
 
-            detection, group, classify = model(ids, attention_mask)
-            detection_label, group_label, classify_label = [x.to(device).long() for x in labels]
+            # Run model
+            detection, group, classify = model.forward(ids, attention_mask)
+
+            # Caluclate loss for each head
+            processed_labels = []
+            for x in labels:
+                if x.dtype == torch.float64:
+                    x = x.float()  # Convert to float32 first
+                if x.dtype != torch.long:
+                    x = x.long()   # Then to long (int64)
+                processed_labels.append(x.to(device))
+
+            detection_label, group_label, classify_label = processed_labels
 
             detection_loss = criterion(detection, detection_label)
             group_loss = criterion(group, group_label)
             classify_loss = criterion(classify, classify_label)
 
-            total_loss = detection_loss + detection_label * group_loss + detection_label * classify_loss 
+
+            # If detection label is 0 (no fallacy), then other heads loss not added (cuz multiplied with 0)
+            mask = detection_label.float()
+            total_loss = detection_loss + mask * group_loss + mask * classify_loss 
             loss = torch.mean(total_loss)
 
             epoch_loss += loss.item()
