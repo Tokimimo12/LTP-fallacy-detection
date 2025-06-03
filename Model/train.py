@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from transformers import DistilBertTokenizerFast, DistilBertModel
 from sklearn.model_selection import train_test_split
 import pandas as pd
-from model import MultiTaskDistilBert
+from model import MultiTaskDistilBert, SignleTaskDistilBert
 from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
 from tqdm import tqdm  
@@ -39,53 +39,70 @@ def plot_losses(train_losses, val_losses):
 
 
 
-def tokenize(data_batch, max_length=50):
-    # Load tokenizer
-    tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
-
+def tokenize(data_batch, tokenizer, max_length=50):
     tokenized = tokenizer(data_batch, max_length = max_length, padding = "longest", return_tensors="pt")
 
     return [tokenized]
 
-def get_model(device):
+def get_model(device, mtl=True):
     bert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
     hidden_size = bert_model.config.hidden_size
     print("Hidden Size: ", hidden_size)
 
-    main_model = MultiTaskDistilBert(bert_model, hidden_size)
+    if mtl:
+        main_model = MultiTaskDistilBert(bert_model, hidden_size)
+    else:
+        main_model = SignleTaskDistilBert(bert_model, hidden_size)
     main_model.to(device)
 
     return main_model
 
+def get_loss_function(device, mtl=True):
+    if mtl:
+        # Class imbalance weights
+        detection_weights = torch.tensor([0.53, 6.84], device=device)  # Weights for detection
+        group_weights = torch.tensor([0.57, 1, 4], device=device)  # Weights for group
+        classify_weights = torch.tensor([0.27, 1.02, 1.23, 4.59, 5.65, 7.35], device=device)  # Weights for classify
 
-def train(train_loader, val_loader, num_epochs=20):
+        detection_criterion = nn.CrossEntropyLoss(weight=detection_weights, reduction='none')
+        group_criterion = nn.CrossEntropyLoss(weight=group_weights, reduction='none')
+        classify_criterion = nn.CrossEntropyLoss(weight=classify_weights, reduction='none')
 
-    model = get_model(device=torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"))
-    device = next(model.parameters()).device
-    criterion = nn.CrossEntropyLoss(reduction='none')
+        return detection_criterion, group_criterion, classify_criterion
+    
+    else:
+        classify_weights = torch.tensor([0.27, 1.02, 1.23, 4.59, 5.65, 7.35], device=device)
+        classify_criterion = nn.CrossEntropyLoss(weight=classify_weights)
+
+        return classify_criterion
+
+
+
+def train(train_loader, val_loader, tokenizer, num_epochs=20, mtl=True):
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    model = get_model(device, mtl=mtl)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    loss_criterion = get_loss_function(device, mtl=mtl)
 
     train_losses = []
     val_losses = []
 
-
     print(f"Using device: {device}")
-
-
     for epoch in range(num_epochs):
         # print(f"\nEpoch {epoch+1}/{num_epochs}")
         model.train()
         epoch_loss = 0
         batch_count = 0
 
-        for batch_idx, (snippets, labels) in tqdm(enumerate(train_loader)):
+        for batch_idx, (snippets, labels) in enumerate(tqdm(train_loader)):
             batch_count += 1
-            tokenized = tokenize(list(snippets), max_length=50)[0]
+            tokenized = tokenize(list(snippets), tokenizer, max_length=50)[0]
             ids = tokenized["input_ids"].to(device)
             attention_mask = tokenized["attention_mask"].to(device)
 
             # Run model
-            detection, group, classify = model.forward(ids, attention_mask)
+            output = model.forward(ids, attention_mask)
 
             # Caluclate loss for each head
             processed_labels = []
@@ -98,15 +115,22 @@ def train(train_loader, val_loader, num_epochs=20):
 
             detection_label, group_label, classify_label = processed_labels
 
-            detection_loss = criterion(detection, detection_label)
-            group_loss = criterion(group, group_label)
-            classify_loss = criterion(classify, classify_label)
+            if mtl:
+                detection, group, classify = output
+                detection_criterion, group_criterion, classify_criterion = loss_criterion
+                detection_loss = detection_criterion(detection, detection_label)
+                group_loss = group_criterion(group, group_label)
+                classify_loss = classify_criterion(classify, classify_label)
 
-
-            # If detection label is 0 (no fallacy), then other heads loss not added (cuz multiplied with 0)
-            mask = detection_label.float()
-            total_loss = detection_loss + mask * group_loss + mask * classify_loss 
-            loss = torch.mean(total_loss)
+                # If detection label is 0 (no fallacy), then other heads loss not added (cuz multiplied with 0)
+                mask = detection_label.float()
+                total_loss = detection_loss + mask * group_loss + mask * classify_loss 
+                loss = torch.mean(total_loss)
+            else:
+                classify = output
+                classify_criterion = loss_criterion
+                classify_loss = classify_criterion(classify, classify_label)
+                loss = classify_loss
 
             epoch_loss += loss.item()
 
@@ -121,7 +145,12 @@ def train(train_loader, val_loader, num_epochs=20):
         train_losses.append(avg_train_loss)
         print(f"\n→ Avg Train Loss: {avg_train_loss:.4f}")
 
-        val_loss = validate(model, val_loader, criterion, device)
+        criterions = {
+            "detection": loss_criterion[0] if mtl else None,
+            "group": loss_criterion[1] if mtl else None,
+            "classify": loss_criterion[2] if mtl else loss_criterion
+        }
+        val_loss = validate(model, val_loader, criterions, tokenizer, device, mtl=mtl)
         val_losses.append(val_loss)
         print(f"→ Validation Loss: {val_loss:.4f}\n{'-'*50}")
 
@@ -135,48 +164,63 @@ def train(train_loader, val_loader, num_epochs=20):
 
 
 
-def validate(model, val_loader, criterion, device):
+def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
     model.eval()
     total_loss = 0
     count = 0
+
+    detection_criterion = criterions["detection"]
+    group_criterion = criterions["group"]
+    classify_criterion = criterions["classify"]
 
     evaluator = HierarchicalEvaluator()
 
     with torch.no_grad():
         for snippets, labels in val_loader:
-            tokenized = tokenize(list(snippets), max_length=50)[0]
+            tokenized = tokenize(list(snippets), tokenizer, max_length=50)[0]
             ids = tokenized["input_ids"].to(device)
             attention_mask = tokenized["attention_mask"].to(device)
 
-            detection, group, classify = model(ids, attention_mask)
+            output = model(ids, attention_mask)
 
             detection_label, group_label, classify_label = [x.to(device).long() for x in labels]
 
-            # print the ground truth and predictions
-            # print("Ground Truth Labels: ", labels)
-            # print("Detection Label: ", detection_label)
-            # print("Group Label: ", group_label) 
-            # print("Classify Label: ", classify_label)
+            if mtl:
+                detection, group, classify = output
+                detection_loss = detection_criterion(detection, detection_label)
+                group_loss = group_criterion(group, group_label)
+                classify_loss = classify_criterion(classify, classify_label)
 
-            detection_loss = criterion(detection, detection_label)
-            group_loss = criterion(group, group_label)
-            classify_loss = criterion(classify, classify_label)
-
-            total_batch_loss = detection_loss + detection_label * group_loss + detection_label * classify_loss
-            batch_loss = torch.mean(total_batch_loss)
+                # If detection label is 0 (no fallacy), then other heads loss not added (cuz multiplied with 0)
+                mask = detection_label.float()
+                total_loss = detection_loss + mask * group_loss + mask * classify_loss 
+                batch_loss = torch.mean(total_loss)
+            else:
+                classify = output
+                classify_loss = classify_criterion(classify, classify_label)
+                batch_loss = classify_loss
 
             total_loss += batch_loss.item()
             count += 1
 
 
             # Evaluate predictions 
-            detection_preds = torch.argmax(detection, dim=1).cpu().tolist()
-            group_preds = torch.argmax(group, dim=1).cpu().tolist()
-            classify_preds = torch.argmax(classify, dim=1).cpu().tolist()
+            if mtl:
+                detection_preds = torch.argmax(detection, dim=1).cpu().tolist()
+                group_preds = torch.argmax(group, dim=1).cpu().tolist()
+                classify_preds = torch.argmax(classify, dim=1).cpu().tolist()
 
-            detection_gt = detection_label.cpu().tolist()
-            group_gt = group_label.cpu().tolist()
-            classify_gt = classify_label.cpu().tolist()
+                detection_gt = detection_label.cpu().tolist()
+                group_gt = group_label.cpu().tolist()
+                classify_gt = classify_label.cpu().tolist()
+            else:
+                classify_preds = torch.argmax(output, dim=1).cpu().tolist()
+                classify_gt = classify_label.cpu().tolist()
+
+                detection_preds = [1] * len(classify_preds)
+                group_preds = [1] * len(classify_preds)
+                detection_gt = [1] * len(classify_preds)
+                group_gt = [1] * len(classify_preds)
 
             # Add predictions and labels to evaluator
             for det_p, grp_p, cls_p, det_g, grp_g, cls_g in zip(detection_preds, group_preds, classify_preds, detection_gt, group_gt, classify_gt):
@@ -233,6 +277,17 @@ def validate(model, val_loader, criterion, device):
 # train_labels = [[1,1,1]]
 # val_labels = [[0,0,0]]
 
+def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, batch_size = 8, mtl = True):
+    train_dataset = MM_Dataset(train_snippets, train_labels, mtl=mtl)
+    val_dataset = MM_Dataset(val_snippets, val_labels, mtl=mtl)
+    test_dataset = MM_Dataset(test_snippets, test_labels, mtl=mtl)
+
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=8)
+    test_loader = DataLoader(test_dataset, batch_size=8)
+
+    return train_loader, val_loader, test_loader
+
 
 if __name__ == "__main__":
     data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
@@ -271,18 +326,25 @@ if __name__ == "__main__":
     train_snippets = augmented_train_data["snippet"].tolist()
     train_labels = augmented_train_data[["fallacy_detection", "category", "class"]].values.tolist()
 
+    tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
 
-    train_dataset = MM_Dataset(train_snippets, train_labels)
-    val_dataset = MM_Dataset(val_snippets, val_labels)
-    test_dataset = MM_Dataset(test_snippets, test_labels)
+    # MTL
+    train_loader, val_loader, test_loader = load_datasets(
+        train_snippets, train_labels, 
+        val_snippets, val_labels, 
+        test_snippets, test_labels,
+        batch_size=8,
+        mtl=True
+    )
+    train(train_loader, val_loader, tokenizer, num_epochs=5, mtl=True)
 
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=32)
-    test_loader = DataLoader(test_dataset, batch_size=32)
-
-
-    train(train_loader, val_loader, num_epochs=5)
-
+    # STL
+    train_loader, val_loader, test_loader = load_datasets(
+        train_snippets, train_labels, 
+        val_snippets, val_labels, 
+        test_snippets, test_labels,
+        batch_size=8,
+        mtl=False
+    )
+    train(train_loader, val_loader, tokenizer, num_epochs=5, mtl=False)
     
-
-# train(dummy_train, dummy_val, train_labels, val_labels)
