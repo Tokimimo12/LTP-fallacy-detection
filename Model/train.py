@@ -2,16 +2,15 @@ import sys
 import os
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from transformers import DistilBertTokenizerFast, DistilBertModel
+from transformers import DistilBertTokenizerFast
 from sklearn.model_selection import train_test_split
 import pandas as pd
-from model import MultiTaskDistilBert, SignleTaskDistilBert
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm  
 import nltk 
 
+from model import get_model, get_tokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from Augment.eda_augmentation import eda_augmentation
 from data.MM_USED_fallacy.MM_Dataset import MM_Dataset
@@ -20,8 +19,7 @@ from Evaluation.HierarchicalEvaluator import HierarchicalEvaluator
 
 nltk.download('wordnet')
 
-
-def plot_losses(train_losses, val_losses):
+def plot_losses(train_losses, val_losses, model_name):
     plt.figure(figsize=(8,6))
     plt.plot(range(1, len(train_losses)+1), train_losses, label='Train Loss')
     plt.plot(range(1, len(val_losses)+1), val_losses, label='Validation Loss')
@@ -34,28 +32,14 @@ def plot_losses(train_losses, val_losses):
     save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Plots'))
     os.makedirs(save_dir, exist_ok=True)
     
-    save_path = os.path.join(save_dir, "loss_plot.png")
+    save_path = os.path.join(save_dir, str(model_name) + "_loss_plot.png")
     plt.savefig(save_path)
-
 
 
 def tokenize(data_batch, tokenizer, max_length=50):
     tokenized = tokenizer(data_batch, max_length = max_length, padding = "longest", return_tensors="pt")
 
     return [tokenized]
-
-def get_model(device, mtl=True):
-    bert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
-    hidden_size = bert_model.config.hidden_size
-    print("Hidden Size: ", hidden_size)
-
-    if mtl:
-        main_model = MultiTaskDistilBert(bert_model, hidden_size)
-    else:
-        main_model = SignleTaskDistilBert(bert_model, hidden_size)
-    main_model.to(device)
-
-    return main_model
 
 def get_loss_function(device, mtl=True):
     if mtl:
@@ -71,31 +55,37 @@ def get_loss_function(device, mtl=True):
         return detection_criterion, group_criterion, classify_criterion
     
     else:
-        classify_weights = torch.tensor([0.27, 1.02, 1.23, 4.59, 5.65, 7.35], device=device)
-        classify_criterion = nn.CrossEntropyLoss(weight=classify_weights)
+        # classify_weights = torch.tensor([0.27, 1.02, 1.23, 4.59, 5.65, 7.35], device=device)
+        # classify_criterion = nn.CrossEntropyLoss(weight=classify_weights)
+        classify_criterion = nn.CrossEntropyLoss()
+
 
         return classify_criterion
 
 
 
-def train(train_loader, val_loader, tokenizer, num_epochs=20, mtl=True):
+def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, mtl=True):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-    model = get_model(device, mtl=mtl)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    model = get_model(device, model_name=bert_model_name, mtl=mtl)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
     loss_criterion = get_loss_function(device, mtl=mtl)
+
+    # Early stopping parameters
+    best_val_loss = float('inf')
+    patience = 3
+    patience_counter = 0
 
     train_losses = []
     val_losses = []
 
     print(f"Using device: {device}")
     for epoch in range(num_epochs):
-        # print(f"\nEpoch {epoch+1}/{num_epochs}")
         model.train()
         epoch_loss = 0
         batch_count = 0
 
-        for batch_idx, (snippets, labels) in enumerate(tqdm(train_loader)):
+        for batch_idx, (snippets, labels) in enumerate(train_loader):
             batch_count += 1
             tokenized = tokenize(list(snippets), tokenizer, max_length=50)[0]
             ids = tokenized["input_ids"].to(device)
@@ -138,9 +128,6 @@ def train(train_loader, val_loader, tokenizer, num_epochs=20, mtl=True):
             loss.backward()
             optimizer.step()
 
-            # if (batch_idx + 1) % 5 == 0 or (batch_idx + 1) == len(train_loader):
-            #     print(f"  [Batch {batch_idx+1}/{len(train_loader)}] Loss: {loss.item():.4f}")
-
         avg_train_loss = epoch_loss / batch_count
         train_losses.append(avg_train_loss)
         print(f"\n→ Avg Train Loss: {avg_train_loss:.4f}")
@@ -154,7 +141,21 @@ def train(train_loader, val_loader, tokenizer, num_epochs=20, mtl=True):
         val_losses.append(val_loss)
         print(f"→ Validation Loss: {val_loss:.4f}\n{'-'*50}")
 
-    plot_losses(train_losses, val_losses)
+        # Check if this is the best model so far
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            print(f"New best model saved with validation loss: {best_val_loss:.4f}")
+        else:
+            patience_counter += 1
+            print(f"Validation loss did not improve. Patience: {patience_counter}/{patience}")
+            
+        # Early stopping
+        if patience_counter >= patience:
+            print(f"Early stopping triggered after {epoch + 1} epochs")
+            break
+
+    plot_losses(train_losses, val_losses, bert_model_name)
 
     # save the model
     save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Models'))
@@ -173,7 +174,10 @@ def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
     group_criterion = criterions["group"]
     classify_criterion = criterions["classify"]
 
-    evaluator = HierarchicalEvaluator()
+    if mtl:
+        evaluator = HierarchicalEvaluator()
+    else:
+        evaluator = HierarchicalEvaluator(num_classes=7)  # 6 classes + 1 for non-fallacy
 
     with torch.no_grad():
         for snippets, labels in val_loader:
@@ -193,8 +197,8 @@ def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
 
                 # If detection label is 0 (no fallacy), then other heads loss not added (cuz multiplied with 0)
                 mask = detection_label.float()
-                total_loss = detection_loss + mask * group_loss + mask * classify_loss 
-                batch_loss = torch.mean(total_loss)
+                combined_loss = detection_loss + mask * group_loss + mask * classify_loss 
+                batch_loss = torch.mean(combined_loss)
             else:
                 classify = output
                 classify_loss = classify_criterion(classify, classify_label)
@@ -237,59 +241,18 @@ def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
 
     return avg_loss
 
-
-
-
-##################### old train function w/o dataloader ######################
-
-        # tokenized_train_data = tokenize(train_data, max_length=4)
-        # tokenized_val_data = tokenize(val_data, max_length=4)
-
-        # for idx, (data, label) in enumerate(zip(tokenized_train_data, train_labels)):
-        #     # Get input data
-        #     ids = data["input_ids"].to(device)
-        #     attention_mask = data["attention_mask"].to(device)
-
-        #     # Run model
-        #     detection, group, classify = model.forward(ids, attention_mask)
-
-        #     # Caluclate loss for each head
-        #     detection_label, group_label, classify_label = torch.tensor(label).to(device)
-        #     detection_loss = criterion(detection, detection_label.unsqueeze(dim=0))
-        #     group_loss = criterion(group, group_label.unsqueeze(dim=0))
-        #     classify_loss = criterion(classify, classify_label.unsqueeze(dim=0))
-
-        #     # If detection label is 0 (no fallacy), then other heads loss not added (cuz multiplied with 0)
-        #     total_loss = detection_loss + detection_label * group_loss + detection_label * classify_loss 
-        #     loss = torch.mean(total_loss)
-
-        #     print("Loss: ", loss.item())
-
-        #     optimizer.zero_grad()
-        #     loss.backward()
-        #     optimizer.step()
-
-
-
-# Load data, but for now using dummy data
-# dummy_train = ["I have beans"]
-# dummy_val = ["I eat beans"]
-# train_labels = [[1,1,1]]
-# val_labels = [[0,0,0]]
-
 def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, batch_size = 8, mtl = True):
     train_dataset = MM_Dataset(train_snippets, train_labels, mtl=mtl)
     val_dataset = MM_Dataset(val_snippets, val_labels, mtl=mtl)
     test_dataset = MM_Dataset(test_snippets, test_labels, mtl=mtl)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=8)
-    test_loader = DataLoader(test_dataset, batch_size=8)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
     return train_loader, val_loader, test_loader
 
-
-if __name__ == "__main__":
+def get_data(augment):
     data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
 
     # make the texts and labels into lists
@@ -307,44 +270,50 @@ if __name__ == "__main__":
         temp_snippets, temp_labels, test_size=0.5, random_state=42
     )
 
+    if augment:
+        train_data = pd.DataFrame({
+            "snippet": train_snippets,
+            "fallacy_detection": [label[0] for label in train_labels],
+            "category": [label[1] for label in train_labels],
+            "class": [label[2] for label in train_labels]
+        })
 
 
-    train_data = pd.DataFrame({
-        "snippet": train_snippets,
-        "fallacy_detection": [label[0] for label in train_labels],
-        "category": [label[1] for label in train_labels],
-        "class": [label[2] for label in train_labels]
-    })
+        augmented_train_data = eda_augmentation(train_data)
+
+        plot_fallacy_detection_distribution(augmented_train_data, augmented=True)
+        plot_category_distribution(augmented_train_data, augmented=True)
+        plot_class_distribution(augmented_train_data, augmented=True)
+
+        train_snippets = augmented_train_data["snippet"].tolist()
+        train_labels = augmented_train_data[["fallacy_detection", "category", "class"]].values.tolist()
+
+    return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels  
 
 
-    augmented_train_data = eda_augmentation(train_data)
+def train_model(bert_model_name = "DistilBert", mtl=True, augment=True, num_epochs=5, batch_size=8):
+    # Load data
+    train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels = get_data(augment=augment)
+    
+    tokenizer = get_tokenizer(model_name=bert_model_name)
 
-    plot_fallacy_detection_distribution(augmented_train_data, augmented=True)
-    plot_category_distribution(augmented_train_data, augmented=True)
-    plot_class_distribution(augmented_train_data, augmented=True)
-
-    train_snippets = augmented_train_data["snippet"].tolist()
-    train_labels = augmented_train_data[["fallacy_detection", "category", "class"]].values.tolist()
-
-    tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
-
-    # MTL
     train_loader, val_loader, test_loader = load_datasets(
         train_snippets, train_labels, 
         val_snippets, val_labels, 
         test_snippets, test_labels,
-        batch_size=8,
-        mtl=True
+        batch_size=batch_size,
+        mtl=mtl
     )
-    train(train_loader, val_loader, tokenizer, num_epochs=5, mtl=True)
+    train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=num_epochs, mtl=mtl)
 
-    # STL
-    train_loader, val_loader, test_loader = load_datasets(
-        train_snippets, train_labels, 
-        val_snippets, val_labels, 
-        test_snippets, test_labels,
-        batch_size=8,
-        mtl=False
-    )
-    train(train_loader, val_loader, tokenizer, num_epochs=5, mtl=False)
+if __name__ == "__main__":
+    # Example usage
+    mtl = True  # Set to False for single-task learning
+    augment = True  # Set to False if you don't want to use EDA augmentation
+    num_epochs = 10  # Adjust as needed
+    batch_size = 16  # Adjust as needed
+
+    for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
+        print(f"Training with {bert_model_name} model...")
+        train_model(bert_model_name, mtl=mtl, augment=augment, num_epochs=num_epochs, batch_size=batch_size)
     

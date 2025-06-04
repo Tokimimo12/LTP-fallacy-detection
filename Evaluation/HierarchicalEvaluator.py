@@ -1,7 +1,8 @@
 from collections import Counter
+import numpy as np
 
 class HierarchicalEvaluator:    
-    def __init__(self):
+    def __init__(self, num_categories=3, num_classes=6):
         # Detection (binary)
         self.detection_total = 0
         self.detection_tp = 0
@@ -10,18 +11,18 @@ class HierarchicalEvaluator:
         self.detection_correct = 0
 
         # Category (multi-class)
-        self.category_total = 0 
-        self.category_tp = 0
-        self.category_fp = 0    
-        self.category_fn = 0
-        self.category_correct = 0
+        self.category_total = np.zeros(num_categories, dtype=int)
+        self.category_tp = np.zeros(num_categories, dtype=int)
+        self.category_fp = np.zeros(num_categories, dtype=int)
+        self.category_fn = np.zeros(num_categories, dtype=int)
+        self.category_correct = np.zeros(num_categories, dtype=int)
 
         # Class (multi-class)
-        self.class_total = 0
-        self.class_tp = 0
-        self.class_fp = 0
-        self.class_fn = 0
-        self.class_correct = 0
+        self.class_total = np.zeros(num_classes, dtype=int)
+        self.class_tp = np.zeros(num_classes, dtype=int)
+        self.class_fp = np.zeros(num_classes, dtype=int)
+        self.class_fn = np.zeros(num_classes, dtype=int)
+        self.class_correct = np.zeros(num_classes, dtype=int)
 
     def add(self, predictions, ground_truth):
         detection_pred, category_pred, class_pred = predictions
@@ -30,7 +31,7 @@ class HierarchicalEvaluator:
         #  ------------- Detection level -------------
 
         self.detection_total +=1
-        if detection_pred == detection_gt:
+        if detection_pred == detection_gt: # Correct detection prediction
             self.detection_correct += 1
             if detection_pred:
                 self.detection_tp += 1
@@ -46,35 +47,62 @@ class HierarchicalEvaluator:
 
         if detection_gt:
             self.category_total+=1
-            if detection_pred == detection_gt:
+            if detection_pred == detection_gt: # detection is correct
                 if category_pred == category_gt:
-                    self.category_correct += 1
-                    self.category_tp += 1
+                    self.category_correct[category_gt] += 1
+                    self.category_tp[category_gt] += 1
                 else:
-                    self.category_fp += 1
-                    self.category_fn +=1
+                    self.category_fp[category_pred] += 1
+                    self.category_fn[category_gt] += 1
+            else: # detection is wrong
+                self.category_fp[category_pred] += 1
+                self.category_fn[category_gt] += 1
+
 
         # -------------- Class level -------------
         if detection_gt:
             self.class_total += 1
             if detection_pred == detection_gt and category_pred == category_gt:
                 if class_pred == class_gt:
-                    self.class_correct += 1
-                    self.class_tp += 1
+                    self.class_correct[class_gt] += 1
+                    self.class_tp[class_gt] += 1
                 else:
-                    self.class_fp += 1
-                    self.class_fn += 1
+                    self.class_fp[class_pred] += 1
+                    self.class_fn[class_gt] += 1
+            else: # detection or category is wrong
+                self.class_fp[class_pred] += 1
+                self.class_fn[class_gt] += 1
         
 
 
     def calculate_metrics(self, correct, total, tp, fp, fn):
-        # accuracy
-        acc = correct / total if total else 0
-        precision = tp / (tp + fp) if (tp + fp) else 0
-        recall = tp / (tp + fn) if (tp + fn) else 0
-        f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) else 0
-        
-        return acc, precision, recall, f1
+        # check if input is a numpy array, then its binary classification
+        if not isinstance(correct, np.ndarray):
+            acc = correct / total if total else 0
+            precision = tp / (tp + fp) if (tp + fp) else 0
+            recall = tp / (tp + fn) if (tp + fn) else 0
+            f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) else 0
+            
+            return acc, precision, recall, f1
+        else:
+            ovr_accuracy = np.sum(correct) / np.sum(total) if np.sum(total) else 0
+            per_class_metrics = np.zeros((len(correct), 4))  # [accuracy, precision, recall, f1] for each class
+            for i in range(len(correct)):
+                if total[i] == 0:
+                    acc = 0
+                    precision = 0
+                    recall = 0
+                    f1 = 0
+                else:
+                    acc = correct[i] / total[i]
+                    precision = tp[i] / (tp[i] + fp[i]) if (tp[i] + fp[i]) else 0
+                    recall = tp[i] / (tp[i] + fn[i]) if (tp[i] + fn[i]) else 0
+                    f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) else 0
+
+                per_class_metrics[i] = [acc, precision, recall, f1]
+
+                
+            return ovr_accuracy, per_class_metrics
 
 
 
@@ -95,6 +123,7 @@ class HierarchicalEvaluator:
             self.category_fp, 
             self.category_fn
         )
+
         class_ = self.calculate_metrics(
             self.class_correct, 
             self.class_total, 
@@ -111,27 +140,96 @@ class HierarchicalEvaluator:
                 "f1": detection[3]
             },
             "category": {
-                "accuracy": category[0],
-                "precision": category[1],
-                "recall": category[2],
-                "f1": category[3]
+                "overall accuracy": category[0],
+                "per class": {
+                    "accuracy": category[1][:, 0],
+                    "precision": category[1][:, 1],
+                    "recall": category[1][:, 2],
+                    "f1": category[1][:, 3]
+                }
             },
             "class": {
-                "accuracy": class_[0],
-                "precision": class_[1],
-                "recall": class_[2],
-                "f1": class_[3]
+                "overall accuracy": class_[0],
+                "per class": {
+                    "accuracy": class_[1][:, 0],
+                    "precision": class_[1][:, 1],
+                    "recall": class_[1][:, 2],
+                    "f1": class_[1][:, 3]
+                }
             }
         }
     
     # this function makes it easier to print the results in a nice way
     def __str__(self):
+        # metrics = self.evaluate()
+        # output = []
+        # for level, values in metrics.items():
+        #     output.append(f"{level.capitalize()} Metrics:")
+        #     for metric, value in values.items():
+        #         output.append(f"  {metric.capitalize()}: {value:.4f}")
+        #     output.append("")
+
+        # return "\n".join(output).strip()
+
+
+        # def format_value(value, indent_level=2):
+        #     indent = " " * indent_level
+        #     if isinstance(value, (float, int)):
+        #         return f"{value:.4f}"
+        #     elif isinstance(value, (list, np.ndarray)):
+        #         return "  ".join([f"{indent}{v:.4f}" for v in np.array(value).flatten()])
+        #     else:
+        #         # String aligned left
+        #         return f"{str(value):<20}"
+
+        # def format_dict(d, indent_level=2):
+        #     lines = []
+        #     indent = " " * indent_level
+        #     for key, value in d.items():
+        #         if isinstance(value, dict):
+        #             lines.append(f"{indent}{key.capitalize()}:")
+        #             lines.extend(format_dict(value, indent_level + 2))
+        #         else:
+        #             lines.append(f"{indent}{key.capitalize()}: {format_value(value, indent_level + 2)}")
+        #     return lines
+
+        # metrics = self.evaluate()
+        # output = []
+        # for section, values in metrics.items():
+        #     output.append(f"{section.capitalize()} Metrics:")
+        #     output.extend(format_dict(values))
+        #     output.append("")
+
+        # return "\n".join(output).strip()
+
         metrics = self.evaluate()
         output = []
-        for level, values in metrics.items():
-            output.append(f"{level.capitalize()} Metrics:")
-            for metric, value in values.items():
-                output.append(f"  {metric.capitalize()}: {value:.4f}")
+
+        for section, values in metrics.items():
+            output.append(f"{section.capitalize()} Metrics:")
+
+            # First, print all scalar metrics
+            for key, val in values.items():
+                if key != "per class" and not isinstance(val, dict):
+                    output.append(f"  {key.capitalize():<18}: {val:.4f}")
+
+            # Print overall accuracy
+            if "overall accuracy" in values:
+                output.append(f"  Overall Accuracy: {values['overall accuracy']:.4f}")
+
+            # Print per-class metrics as a table
+            if "per class" in values:
+                per_class = values["per class"]
+                headers = ["Metric"] + [f"Class {i}" for i in range(len(next(iter(per_class.values()))))] + ["|  Avg"]
+                output.append("")
+                output.append("  " + "  ".join(f"{h:>10}" for h in headers))
+
+                for metric_name, metric_values in per_class.items():
+                    metric_values = np.array(metric_values)
+                    avg = np.mean(metric_values)
+                    line = [f"{metric_name.capitalize():>10}"] + [f"{v:.4f}" for v in metric_values] + [f"|  {avg:.4f}"]
+                    output.append("  " + "  ".join(f"{val:>10}" for val in line))
+
             output.append("")
 
         return "\n".join(output).strip()
