@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm  
 import nltk 
-import pickle
 
 from model import get_model, get_tokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -16,24 +15,9 @@ from Augment.eda_augmentation import eda_augmentation
 from data.MM_USED_fallacy.MM_Dataset import MM_Dataset
 from data.MM_USED_fallacy.data_analysis import plot_fallacy_detection_distribution, plot_category_distribution, plot_class_distribution
 from Evaluation.HierarchicalEvaluator import HierarchicalEvaluator
+from Utils.utils import *
 
 nltk.download('wordnet')
-
-def plot_losses(train_losses, val_losses, model_name):
-    plt.figure(figsize=(8,6))
-    plt.plot(range(1, len(train_losses)+1), train_losses, label='Train Loss')
-    plt.plot(range(1, len(val_losses)+1), val_losses, label='Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training and Validation Loss over Epochs')
-    plt.legend()
-    plt.grid(True)
-    
-    save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Plots'))
-    os.makedirs(save_dir, exist_ok=True)
-    
-    save_path = os.path.join(save_dir, str(model_name) + "_loss_plot.png")
-    plt.savefig(save_path)
 
 
 def tokenize(data_batch, tokenizer, max_length=50):
@@ -41,12 +25,14 @@ def tokenize(data_batch, tokenizer, max_length=50):
 
     return [tokenized]
 
-def get_loss_function(device, mtl=True):
+def get_loss_function(device, loss_weights, mtl=True):
+    detection_weights, category_weights, class_weights = loss_weights
+    print("Detection Weights: ", detection_weights, " -- Category Weights: ", category_weights, " -- Class Weights: ", class_weights)
+
     if mtl:
-        # Class imbalance weights
-        detection_weights = torch.tensor([0.53, 6.84], device=device)  # Weights for detection
-        group_weights = torch.tensor([0.57, 1, 4], device=device)  # Weights for group
-        classify_weights = torch.tensor([0.27, 1.02, 1.23, 4.59, 5.65, 7.35], device=device)  # Weights for classify
+        detection_weights = torch.tensor(detection_weights, device=device, dtype=torch.float32)  # Weights for detection
+        group_weights = torch.tensor(category_weights, device=device, dtype=torch.float32)  # Weights for group
+        classify_weights = torch.tensor(class_weights, device=device, dtype=torch.float32)  # Weights for classify
 
         detection_criterion = nn.CrossEntropyLoss(weight=detection_weights, reduction='none')
         group_criterion = nn.CrossEntropyLoss(weight=group_weights, reduction='none')
@@ -55,21 +41,19 @@ def get_loss_function(device, mtl=True):
         return detection_criterion, group_criterion, classify_criterion
     
     else:
-        # classify_weights = torch.tensor([0.27, 1.02, 1.23, 4.59, 5.65, 7.35], device=device)
-        # classify_criterion = nn.CrossEntropyLoss(weight=classify_weights)
-        classify_criterion = nn.CrossEntropyLoss()
-
+        classify_weights = torch.tensor(class_weights, device=device, dtype=torch.float32)
+        classify_criterion = nn.CrossEntropyLoss(weight=classify_weights)
 
         return classify_criterion
 
 
 
-def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, mtl=True):
+def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, num_epochs=20, mtl=True):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     model = get_model(device, model_name=bert_model_name, mtl=mtl)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
-    loss_criterion = get_loss_function(device, mtl=mtl)
+    loss_criterion = get_loss_function(device, loss_weights, mtl=mtl)
 
     # Early stopping parameters
     best_val_loss = float('inf')
@@ -90,7 +74,6 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, m
             tokenized = tokenize(list(snippets), tokenizer, max_length=256)[0]
             ids = tokenized["input_ids"].to(device)
             attention_mask = tokenized["attention_mask"].to(device)
-
 
             # Run model
             output = model.forward(ids, attention_mask)
@@ -138,7 +121,7 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, m
             "group": loss_criterion[1] if mtl else None,
             "classify": loss_criterion[2] if mtl else loss_criterion
         }
-        val_loss = validate(model, val_loader, criterions, tokenizer, device, mtl=mtl)
+        val_loss, avg_class_f1 = validate(model, val_loader, criterions, tokenizer, device, mtl=mtl)
         val_losses.append(val_loss)
         print(f"→ Validation Loss: {val_loss:.4f}\n{'-'*50}")
 
@@ -156,7 +139,7 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, m
             print(f"Early stopping triggered after {epoch + 1} epochs")
             break
 
-    plot_losses(train_losses, val_losses, bert_model_name)
+    plot_losses(train_losses, val_losses, bert_model_name, mtl, avg_class_f1)
 
     # save the model
     save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Models'))
@@ -222,6 +205,7 @@ def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
                 classify_preds = torch.argmax(output, dim=1).cpu().tolist()
                 classify_gt = classify_label.cpu().tolist()
 
+                # Placeholders since not predicted for STL
                 detection_preds = [1] * len(classify_preds)
                 group_preds = [1] * len(classify_preds)
                 detection_gt = [1] * len(classify_preds)
@@ -239,8 +223,9 @@ def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
 
     print("\nValidation Metrics:")
     print(evaluator)
+    avg_class_f1 = evaluator.get_avg_class_f1()
 
-    return avg_loss
+    return avg_loss, avg_class_f1
 
 def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, batch_size = 8, mtl = True):
     train_dataset = MM_Dataset(train_snippets, train_labels, mtl=mtl)
@@ -252,6 +237,7 @@ def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_s
     test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
     return train_loader, val_loader, test_loader
+
 
 def get_data(augment):
     data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
@@ -295,6 +281,8 @@ def get_data(augment):
 def train_model(bert_model_name = "DistilBert", mtl=True, augment=True, num_epochs=5, batch_size=8):
     # Load data
     train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels = get_data(augment=augment)
+
+    loss_weights = get_loss_class_weighting(train_labels, mtl=mtl)
     
     tokenizer = get_tokenizer(model_name=bert_model_name)
 
@@ -305,17 +293,18 @@ def train_model(bert_model_name = "DistilBert", mtl=True, augment=True, num_epoc
         batch_size=batch_size,
         mtl=mtl
     )
-    train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=num_epochs, mtl=mtl)
+    train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, num_epochs=num_epochs, mtl=mtl)
 
 if __name__ == "__main__":
     # Example usage
     mtl = True  # Set to False for single-task learning
-    augment = True  # Set to False if you don't want to use EDA augmentation
+    augment = False  # Set to False if you don't want to use EDA augmentation
     num_epochs = 10  # Adjust as needed
     batch_size = 16  # Adjust as needed
 
-    for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
-        print(f"Training with {bert_model_name} model...")
-        train_model(bert_model_name, mtl=mtl, augment=augment, num_epochs=num_epochs, batch_size=batch_size)
-
+    for mtl in [False, True]:
+        print("MTL model: ", mtl)
+        for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
+            print(f"Training with {bert_model_name} model...")
+            train_model(bert_model_name, mtl=mtl, augment=augment, num_epochs=num_epochs, batch_size=batch_size)
     
