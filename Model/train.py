@@ -2,13 +2,13 @@ import sys
 import os
 import torch
 import torch.nn as nn
-from transformers import DistilBertTokenizerFast
 from sklearn.model_selection import train_test_split
 import pandas as pd
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm  
 import nltk 
+import pickle
 
 from model import get_model, get_tokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -37,7 +37,7 @@ def plot_losses(train_losses, val_losses, model_name):
 
 
 def tokenize(data_batch, tokenizer, max_length=50):
-    tokenized = tokenizer(data_batch, max_length = max_length, padding = "longest", return_tensors="pt")
+    tokenized = tokenizer(data_batch, max_length = max_length, truncation=True, padding = "longest", return_tensors="pt")
 
     return [tokenized]
 
@@ -87,9 +87,10 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, m
 
         for batch_idx, (snippets, labels) in enumerate(train_loader):
             batch_count += 1
-            tokenized = tokenize(list(snippets), tokenizer, max_length=50)[0]
+            tokenized = tokenize(list(snippets), tokenizer, max_length=256)[0]
             ids = tokenized["input_ids"].to(device)
             attention_mask = tokenized["attention_mask"].to(device)
+
 
             # Run model
             output = model.forward(ids, attention_mask)
@@ -316,4 +317,5 @@ if __name__ == "__main__":
     for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
         print(f"Training with {bert_model_name} model...")
         train_model(bert_model_name, mtl=mtl, augment=augment, num_epochs=num_epochs, batch_size=batch_size)
+
     
