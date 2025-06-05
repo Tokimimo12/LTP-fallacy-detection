@@ -6,7 +6,7 @@ data/data_afc
 data/data_afd
 data/MM_USED_fallacy/
 
-
+*.pyc
 
 Saved_Models/
 
