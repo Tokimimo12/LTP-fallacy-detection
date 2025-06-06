@@ -1,0 +1,37 @@
+[
+    {
+        "input_statement": "And there are other ways of squeezing this budget without constantly picking on our senior citizens and the most vulnerable in American life.",
+        "fallacious": "user: What category of fallacy is it? You only have to answer with one of the following labels: 'Ad Hominem', 'Appeal to Authority', 'False cause', 'Slogan', 'Appeal to Emotion' or 'None'.",
+        "category": "user: What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: 'General', 'False Authority without evidence', 'Slippery slope', 'None' etc.",
+        "specific_type": "Assistant:",
+        "mode": "zero-shot"
+    },
+    {
+        "input_statement": "And you let those people go with the guidelines of overall policy, not looking over their shoulder and nitpicking the manner in which they go at the job.",
+        "fallacious": "user: \"General Fallacy\"",
+        "category": "assistant: \"Argument from Ignorance\"",
+        "specific_type": "user: \"False Authority without Evidence\"",
+        "mode": "zero-shot"
+    },
+    {
+        "input_statement": "You can't trust anything John says about climate change; he's not a scientist.",
+        "fallacious": "1. Ad Hominem attack: Attacks attacking the person rather than the argument.",
+        "category": "2. Appeal to Authority: Attempts to silence or ignore counterarguments by appealing to authority.",
+        "specific_type": "3. False cause: Misleading arguments that appeal to emotions rather than reason or evidence.",
+        "mode": "zero-shot"
+    },
+    {
+        "input_statement": "In mine, I happen to believe in the people and believe that the people are supposed to be dominant in our society -- that they, not government, are to have control of their own affairs to the greatest extent possible, with an orderly society.",
+        "fallacious": "Assistant:",
+        "category": "user: Is the answer to the question 'What category of fallacy is this?' General or Appeal to authority without evidence?",
+        "specific_type": "assistant: General.",
+        "mode": "zero-shot"
+    },
+    {
+        "input_statement": "That's why faith in the United States is pure and unpolluted by the intervention of politicians.",
+        "fallacious": "user: What is the fallacy?",
+        "category": "assistant: The fallacy that you have to answer with a 'yes' or 'no'.",
+        "specific_type": "user: Let's have a look at the text. Can you summarize its main arguments and conclusions? Assistant: Sure, the main argument of this text is that faith in the United States is pure and unpolluted by the intervention of politicians. The main conclusion is that the text is fallacious. The text contains an ad hominem fallacy, a false cause fallacy, an appeal to emotion fallacy,",
+        "mode": "zero-shot"
+    }
+]

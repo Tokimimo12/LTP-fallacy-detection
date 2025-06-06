@@ -1,47 +1,9 @@
-
-# # Use a pipeline as a high-level helper
-
-# from transformers import pipeline
-
-# messages = [
-#     {"role": "user", "content": "What is the capital of France?"},
-# ]
-# pipe = pipeline("text-generation", model="MaziyarPanahi/calme-3.2-instruct-78b")
-# pipe(messages)
-
-
-# # Load model directly
-
-# from transformers import AutoTokenizer, AutoModelForCausalLM
-
-# tokenizer = AutoTokenizer.from_pretrained("MaziyarPanahi/calme-3.2-instruct-78b")
-# model = AutoModelForCausalLM.from_pretrained("MaziyarPanahi/calme-3.2-instruct-78b")
-
-
-# import transformers
-
-# pipeline = transformers.pipeline(
-#     "text-generation",
-#     model="microsoft/phi-4",
-#     model_kwargs={"torch_dtype": "auto"},
-#     device_map="auto",
-# )
-
-# messages = [
-#     {"role": "system", "content": "You are a medieval knight and must provide explanations to modern people."},
-#     {"role": "user", "content": "How should I explain the Internet?"},
-# ]
-
-# outputs = pipeline(messages, max_new_tokens=128)
-# print(outputs[0]["generated_text"][-1])
-
-
-
 import json
 import random
 import logging
 from retry import retry
-from transformers import pipeline
+from transformers import pipeline, AutoConfig
+
 from tenacity import retry, stop_after_attempt, wait_fixed
 import sys
 
@@ -140,17 +102,17 @@ def save_results(results: list, filename: str):
     print(f"Saved {len(results)} results to {filename}")
 
 
-def zeroshot(generator):
+def zeroshot(generator, model):
     mode = "zero-shot"
     statements = load_statements("statements.json")
     results = process_statements(statements, generator, mode)
-    save_results(results, "zeroshot_answers_final.json")
+    save_results(results, f"zeroshot_answers_final_{model}.json")
 
-def oneshot(generator):
+def oneshot(generator,model):
     mode = "one-shot"
     statements = load_statements("statements.json")
     results = process_statements(statements, generator, mode)
-    save_results(results, "one_answers_final.json")
+    save_results(results, f"one_answers_final_{model}.json")
 
 
 
@@ -159,37 +121,49 @@ if __name__ == "__main__":
 
     #GENERATiION CONFIGURATION
     generation_models = {
-    "phi-4": "microsoft/phi-4",#apparently is a text generation model and does not support question-answering tasks
-    "calme": "MaziyarPanahi/calme-3.2-instruct-78b",
-    "llama": "meta-llama/Llama-3.3-70B-Instruct" #apparently you need token for this, to do later
+    "phi-4": "microsoft/phi-4",#apparently is a text generation model and does not support question-answering tasks  
+    "menda": "weathermanj/Menda-3b-Optim-200" ,
+    "mistralai": "mistralai/Mistral-7B-v0.1",
+    "tinyllama" : "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    "llama": "meta-llama/Llama-3.2-3B", #apparently you need token for this, to do later
+    "llama-instruct": "meta-llama/Llama-3.2-3B-Instruct"
+    # "llama-2": "meta-llama/Llama-2-7b"
     }
 
-    # selected_model = "calme"  
-    # model_name = generation_models[selected_model]
 
-    selected_model_key = sys.argv[1] if len(sys.argv) > 1 else "llama"
-
-    hf_token = os.getenv("HUGGINGFACE_TOKEN")
-
-    if selected_model_key not in generation_models:
-        raise ValueError(f"Model '{selected_model_key}' not supported. Choose from: {list(generation_models.keys())}")
-
-    model_name = generation_models[selected_model_key]
+    for model in generation_models:
+        selected_model = model
+        model_name = generation_models[selected_model]
 
 
-    generator = pipeline(
-        "text-generation",
-        model=model_name,
-        model_kwargs={"torch_dtype": "auto"},
-        device_map="auto",
-    )
-    zeroshot(generator)
-    oneshot(generator)
+        try:
+            config = AutoConfig.from_pretrained("meta-llama/Llama-3.2-3B")
+            print("Access successful!")
+        except Exception as e:
+            print(f"Still having issues: {e}")
 
 
+        generator = pipeline(
+            "text-generation",
+            model=model_name,
+            model_kwargs={"torch_dtype": "auto"},
+            device_map="auto",
+        )
+        zeroshot(generator, selected_model)
+        oneshot(generator, selected_model)
 
 
 
+
+
+   # selected_model_key = sys.argv[1] if len(sys.argv) > 1 else "llama"
+
+    # hf_token = os.getenv("HUGGINGFACE_TOKEN")
+
+    # if selected_model_key not in generation_models:
+    #     raise ValueError(f"Model '{selected_model_key}' not supported. Choose from: {list(generation_models.keys())}")
+
+    # model_name = generation_models[selected_model_key]
 
 
 

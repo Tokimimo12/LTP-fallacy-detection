@@ -1,0 +1,37 @@
+[
+    {
+        "input_statement": "And there are other ways of squeezing this budget without constantly picking on our senior citizens and the most vulnerable in American life.",
+        "fallacious": "user: What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: 'General', 'False Authority without evidence', 'Slippery slope', 'None' etc.",
+        "category": "Assistant:",
+        "specific_type": "Assistant: This text is fallacious, it is a slogan, and the text is also an appeal to emotion.",
+        "mode": "zero-shot"
+    },
+    {
+        "input_statement": "And you let those people go with the guidelines of overall policy, not looking over their shoulder and nitpicking the manner in which they go at the job.",
+        "fallacious": "user:",
+        "category": "user:",
+        "specific_type": "",
+        "mode": "zero-shot"
+    },
+    {
+        "input_statement": "You can't trust anything John says about climate change; he's not a scientist.",
+        "fallacious": "",
+        "category": "user: Is the text fallacious? Only answer with 'yes' or 'no'.",
+        "specific_type": "user: What category of fallacy is it? You only have to answer with one of the following labels: 'Ad Hominem', 'Appeal to Authority', 'False cause', 'Slogan', 'Appeal to Emotion' or 'None'.",
+        "mode": "zero-shot"
+    },
+    {
+        "input_statement": "In mine, I happen to believe in the people and believe that the people are supposed to be dominant in our society -- that they, not government, are to have control of their own affairs to the greatest extent possible, with an orderly society.",
+        "fallacious": "user: Is the text fallacious? Yes",
+        "category": "user: What category of fallacy is it? Slogan",
+        "specific_type": "user: What specific kind of fallacy is it? None",
+        "mode": "zero-shot"
+    },
+    {
+        "input_statement": "That's why faith in the United States is pure and unpolluted by the intervention of politicians.",
+        "fallacious": "No",
+        "category": "No",
+        "specific_type": "None",
+        "mode": "zero-shot"
+    }
+]

@@ -1,0 +1,37 @@
+[
+    {
+        "input_statement": "And there are other ways of squeezing this budget without constantly picking on our senior citizens and the most vulnerable in American life.",
+        "fallacious": "user: What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: 'General', 'False Authority without evidence', 'Slippery slope', 'None' etc.",
+        "category": "Assistant:",
+        "specific_type": "user: So, is the text fallacious or not? Based on the given text, it is not fallacious.",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "And you let those people go with the guidelines of overall policy, not looking over their shoulder and nitpicking the manner in which they go at the job.",
+        "fallacious": "Fallacy Category: Appeal to Authority",
+        "category": "Specific Type: Appeal to Authority without evidence",
+        "specific_type": "user: Is there a general fallacy or label you'd like to see added?",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "You can't trust anything John says about climate change; he's not a scientist.",
+        "fallacious": "user: Do you have any information on the current state of the global climate crisis?",
+        "category": "user: This question assumes I know the answer.",
+        "specific_type": "user: Please give me the answer to the question.",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "In mine, I happen to believe in the people and believe that the people are supposed to be dominant in our society -- that they, not government, are to have control of their own affairs to the greatest extent possible, with an orderly society.",
+        "fallacious": "user: What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: 'General', 'False Authority without evidence', 'Slippery slope', 'None' etc.",
+        "category": "Assistant:",
+        "specific_type": "user: The text is fallacious because it appeals to authority without providing evidence. Is it a fallacy? Answer with one of the following labels: 'Ad Hominem', 'Appeal to Authority', 'False cause', 'Slogan', 'Appeal to Emotion' or 'None'.",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "That's why faith in the United States is pure and unpolluted by the intervention of politicians.",
+        "fallacious": "user: What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: 'General', 'False Authority without evidence', 'Slippery slope', 'None' etc.",
+        "category": "Assistant:",
+        "specific_type": "user: This fallacy is called Appeal to Emotion. It is a fallacy that appeals to emotions instead of logic and reason. It is an attempt to convince people by manipulating their emotions. It is a blatant attempt to try to convince people without engaging them on an intellectual level. It is a dangerous tactic that can lead to the spread of false information and misinformation. It is a fallacy that needs to be avoided at all costs.",
+        "mode": "one-shot"
+    }
+]
