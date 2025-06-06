@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=train_ltp_model        # Job name
-#SBATCH --output=results-simple-model-%j.log
+#SBATCH --output=results-augmented-model-%j.log
 #SBATCH --nodes=1                     # Number of nodes (use 1 node)
 #SBATCH --ntasks=1                    # One task
 #SBATCH --gpus-per-node=v100:1
