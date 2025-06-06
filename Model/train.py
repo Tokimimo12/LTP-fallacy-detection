@@ -9,13 +9,15 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm  
 import nltk 
 import pickle
+from hierarchicalsoftmax import HierarchicalSoftmaxLoss
 
-from model import get_model, get_tokenizer
+from model import get_model, get_tokenizer, HTCModel
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from Augment.eda_augmentation import eda_augmentation
-from data.MM_USED_fallacy.MM_Dataset import MM_Dataset
+from data.MM_USED_fallacy.MM_Dataset import MM_Dataset, HTC_MM_Dataset
 from data.MM_USED_fallacy.data_analysis import plot_fallacy_detection_distribution, plot_category_distribution, plot_class_distribution
 from Evaluation.HierarchicalEvaluator import HierarchicalEvaluator
+from HTC_utils import get_tree, get_index_dicts, get_tree_dicts, post_process_predictions
 
 nltk.download('wordnet')
 
@@ -64,12 +66,15 @@ def get_loss_function(device, mtl=True):
 
 
 
-def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, mtl=True):
+def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, mtl=True, htc=False):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-    model = get_model(device, model_name=bert_model_name, mtl=mtl)
+    model = get_model(device, model_name=bert_model_name, mtl=mtl, htc=htc, root=get_tree() if htc else None)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
-    loss_criterion = get_loss_function(device, mtl=mtl)
+    if htc:
+        loss_criterion = HierarchicalSoftmaxLoss(root=get_tree())
+    else:
+        loss_criterion = get_loss_function(device, mtl=mtl)
 
     # Early stopping parameters
     best_val_loss = float('inf')
@@ -138,7 +143,7 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, m
             "group": loss_criterion[1] if mtl else None,
             "classify": loss_criterion[2] if mtl else loss_criterion
         }
-        val_loss = validate(model, val_loader, criterions, tokenizer, device, mtl=mtl)
+        val_loss = validate(model, val_loader, criterions, tokenizer, device, mtl=mtl, htc=htc)
         val_losses.append(val_loss)
         print(f"→ Validation Loss: {val_loss:.4f}\n{'-'*50}")
 
@@ -166,7 +171,7 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=20, m
 
 
 
-def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
+def validate(model, val_loader, criterions, tokenizer, device, mtl=True, htc=False):
     model.eval()
     total_loss = 0
     count = 0
@@ -219,6 +224,8 @@ def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
                 group_gt = group_label.cpu().tolist()
                 classify_gt = classify_label.cpu().tolist()
             else:
+                if htc:
+                    output = output.result
                 classify_preds = torch.argmax(output, dim=1).cpu().tolist()
                 classify_gt = classify_label.cpu().tolist()
 
@@ -226,6 +233,9 @@ def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
                 group_preds = [1] * len(classify_preds)
                 detection_gt = [1] * len(classify_preds)
                 group_gt = [1] * len(classify_preds)
+                if htc:
+                    classify_preds = post_process_predictions(classify_preds)
+                    classify_gt = post_process_predictions(classify_gt)
 
             # Add predictions and labels to evaluator
             for det_p, grp_p, cls_p, det_g, grp_g, cls_g in zip(detection_preds, group_preds, classify_preds, detection_gt, group_gt, classify_gt):
@@ -242,10 +252,16 @@ def validate(model, val_loader, criterions, tokenizer, device, mtl=True):
 
     return avg_loss
 
-def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, batch_size = 8, mtl = True):
-    train_dataset = MM_Dataset(train_snippets, train_labels, mtl=mtl)
-    val_dataset = MM_Dataset(val_snippets, val_labels, mtl=mtl)
-    test_dataset = MM_Dataset(test_snippets, test_labels, mtl=mtl)
+def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, batch_size = 8, mtl = True, htc=False, root=None, data_labels= None):
+    if htc:
+        name_to_node_id, _ = get_tree_dicts(root, data_labels)
+        train_dataset = HTC_MM_Dataset(train_snippets, train_labels, name_to_node_id)
+        val_dataset = HTC_MM_Dataset(val_snippets, val_labels, name_to_node_id)
+        test_dataset = HTC_MM_Dataset(test_snippets, test_labels, name_to_node_id)
+    else:
+        train_dataset = MM_Dataset(train_snippets, train_labels, mtl=mtl)
+        val_dataset = MM_Dataset(val_snippets, val_labels, mtl=mtl)
+        test_dataset = MM_Dataset(test_snippets, test_labels, mtl=mtl)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
@@ -253,8 +269,18 @@ def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_s
 
     return train_loader, val_loader, test_loader
 
-def get_data(augment):
+def get_data(augment, htc=False):
     data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
+    # only use first 100 samples
+    data = data.head(100)
+
+    if htc:
+        class_to_name, category_to_name, detection_to_name = get_index_dicts()
+        data.loc[data['fallacy_detection'] == 0, 'class'] = -1
+        data["class"] = data["class"].map(class_to_name)
+        data["category"] = data["category"].map(category_to_name)
+        data["fallacy_detection"] = data["fallacy_detection"].map(detection_to_name)
+        unique_classes = data["class"].unique()
 
     # make the texts and labels into lists
     snippets = data["snippet"].tolist()
@@ -289,12 +315,19 @@ def get_data(augment):
         train_snippets = augmented_train_data["snippet"].tolist()
         train_labels = augmented_train_data[["fallacy_detection", "category", "class"]].values.tolist()
 
-    return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels  
+    if htc:
+        return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes
+    else:
+        return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels
 
 
-def train_model(bert_model_name = "DistilBert", mtl=True, augment=True, num_epochs=5, batch_size=8):
+def train_model(bert_model_name = "DistilBert", mtl=True, augment=True, num_epochs=5, batch_size=8, htc=False):
     # Load data
-    train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels = get_data(augment=augment)
+    if htc:
+        train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes = get_data(augment=augment, htc=htc)
+        root = get_tree()
+    else:
+        train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels = get_data(augment=augment)
     
     tokenizer = get_tokenizer(model_name=bert_model_name)
 
@@ -303,19 +336,23 @@ def train_model(bert_model_name = "DistilBert", mtl=True, augment=True, num_epoc
         val_snippets, val_labels, 
         test_snippets, test_labels,
         batch_size=batch_size,
-        mtl=mtl
+        mtl=mtl,
+        htc = htc,
+        data_labels=unique_classes if htc else None,
+        root=root if htc else None
     )
-    train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=num_epochs, mtl=mtl)
+    train(train_loader, val_loader, bert_model_name, tokenizer, num_epochs=num_epochs, mtl=mtl, htc=htc)
 
 if __name__ == "__main__":
     # Example usage
-    mtl = True  # Set to False for single-task learning
-    augment = True  # Set to False if you don't want to use EDA augmentation
+    mtl = False  # Set to False for single-task learning
+    augment = False  # Set to False if you don't want to use EDA augmentation
     num_epochs = 10  # Adjust as needed
     batch_size = 16  # Adjust as needed
+    htc=True
 
     for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
         print(f"Training with {bert_model_name} model...")
-        train_model(bert_model_name, mtl=mtl, augment=augment, num_epochs=num_epochs, batch_size=batch_size)
+        train_model(bert_model_name, mtl=mtl, augment=augment, num_epochs=num_epochs, batch_size=batch_size, htc=htc)
 
     
