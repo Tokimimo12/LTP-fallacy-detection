@@ -312,10 +312,11 @@ def train_model(bert_model_name = "DistilBert", mtl=True, augment=True, num_epoc
     if htc:
         train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes = get_data(augment=augment, htc=htc)
         root = get_tree()
+        loss_weights = None
     else:
         train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels = get_data(augment=augment)
-
-    loss_weights = get_loss_class_weighting(train_labels, mtl=mtl)
+        loss_weights = get_loss_class_weighting(train_labels, mtl=mtl)
+    
     
     tokenizer = get_tokenizer(model_name=bert_model_name)
 
