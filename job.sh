@@ -5,12 +5,13 @@
 #SBATCH --ntasks=1                    # One task
 #SBATCH --gpus-per-node=v100:1
 #SBATCH --time=02:00:00              # Time limit for the job
+#SBATCH --mem=2GB
 
 # Remove all previously loaded modules
 module purge
 
 # Load Python module
-module load Python/3.9.6-GCCcore-11.2.0
+module load Python/3.11.5-GCCcore-13.2.0
 
 # Activate virtual environment
 source $HOME/venvs/ltp/bin/activate
