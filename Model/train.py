@@ -63,7 +63,7 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, nu
 
     # Early stopping parameters
     best_val_loss = float('inf')
-    patience = 3
+    patience = 30
     patience_counter = 0
 
     train_losses = []
