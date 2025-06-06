@@ -342,7 +342,7 @@ if __name__ == "__main__":
     for mtl in [False, True]:
         print("MTL model: ", mtl)
         for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
-            print(f"Training with {bert_model_name} model...")
+            print(f"################ Training with {bert_model_name} model...")
             train_model(bert_model_name, mtl=mtl, augment=augment, num_epochs=num_epochs, batch_size=batch_size, htc=htc)
         if htc:
             break
