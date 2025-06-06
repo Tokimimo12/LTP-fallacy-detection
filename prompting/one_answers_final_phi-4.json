@@ -9,15 +9,15 @@
     {
         "input_statement": "And you let those people go with the guidelines of overall policy, not looking over their shoulder and nitpicking the manner in which they go at the job.",
         "fallacious": "1. Yes",
-        "category": "2. Appeal to Authority",
-        "specific_type": "3. False Authority without evidence",
+        "category": "2. Appeal to Emotion",
+        "specific_type": "3. Appeal to pity",
         "mode": "one-shot"
     },
     {
         "input_statement": "You can't trust anything John says about climate change; he's not a scientist.",
         "fallacious": "1. Yes",
         "category": "2. Ad Hominem",
-        "specific_type": "3. Circumstantial Ad Hominem",
+        "specific_type": "3. General",
         "mode": "one-shot"
     },
     {
