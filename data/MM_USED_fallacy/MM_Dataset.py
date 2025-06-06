@@ -1,22 +1,27 @@
 from torch.utils.data import Dataset
 
 class MM_Dataset(Dataset):
-    def __init__(self, snippets, labels, mtl=True):
+    def __init__(self, snippets, labels, head_type="MTL 6"):
         self.snippets = snippets
         self.labels = labels
-        self.mtl = mtl
+        self.head_type = head_type
 
     def __len__(self):
         return len(self.snippets)
 
     def __getitem__(self, idx):
         snippet = self.snippets[idx]
-        if self.mtl:
+        if self.head_type == "MTL 6":
             # Multi-task learning: return all three labels
             detection_label = self.labels[idx][0]
             group_label = self.labels[idx][1]
             classify_label = self.labels[idx][2]
-        else:
+        elif self.head_type == "MTL 2":
+            # Multi-task learning with eachs groups 2 classes reduced to 2 total classes in final classification
+            detection_label = self.labels[idx][0]
+            group_label = self.labels[idx][1]
+            classify_label = self.labels[idx][2] % 2  # Reduce to 2 classes for final classification
+        elif self.head_type == "STL":
             # Single-task learning: gotta change it to add extra class
             detection_label = self.labels[idx][0]
             group_label = self.labels[idx][1]

@@ -3,13 +3,13 @@ from transformers import DistilBertModel, BertModel, RobertaModel, DistilBertTok
 
 
 class MultiTaskModel(nn.Module):
-    def __init__(self, base_model, hidden_size):
+    def __init__(self, base_model, hidden_size, num_classes = 6):
         super().__init__()
         self.bert = base_model
         
         self.detection_head = nn.Linear(in_features=hidden_size, out_features=2)
         self.group_head = nn.Linear(in_features=hidden_size, out_features=3)
-        self.classify_head = nn.Linear(in_features=hidden_size, out_features=6)
+        self.classify_head = nn.Linear(in_features=hidden_size, out_features=num_classes)
 
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
@@ -36,7 +36,7 @@ class SingleTaskModel(nn.Module):
 
         return logits_classify
     
-def get_model(device, model_name = "DistilBert", mtl=True):
+def get_model(device, model_name = "DistilBert", head_type="MTL 6"):
     if model_name == "DistilBert":
         bert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
     elif model_name == "Bert":
@@ -46,9 +46,11 @@ def get_model(device, model_name = "DistilBert", mtl=True):
     hidden_size = bert_model.config.hidden_size
     print("Hidden Size: ", hidden_size)
 
-    if mtl:
-        main_model = MultiTaskModel(bert_model, hidden_size)
-    else:
+    if head_type == "MTL 6":
+        main_model = MultiTaskModel(bert_model, hidden_size, num_classes=6)
+    elif head_type == "MTL 2":
+        main_model = MultiTaskModel(bert_model, hidden_size, num_classes=2)
+    elif head_type == "STL":
         main_model = SingleTaskModel(bert_model, hidden_size)
 
     main_model.to(device)
