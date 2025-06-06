@@ -258,8 +258,6 @@ def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_s
 
 def get_data(augment, htc=False):
     data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
-    # only use first 100 samples
-    data = data.head(100)
 
     if htc:
         class_to_name, category_to_name, detection_to_name = get_index_dicts()
