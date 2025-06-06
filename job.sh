@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1                    # One task
 #SBATCH --gpus-per-node=v100:1
 #SBATCH --time=02:00:00              # Time limit for the job
-#SBATCH --mem=2GB
+#SBATCH --mem=6GB
 
 # Remove all previously loaded modules
 module purge
