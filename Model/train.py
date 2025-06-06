@@ -335,8 +335,8 @@ if __name__ == "__main__":
     # Example usage
     mtl = False  # Set to False for single-task learning
     augment = False  # Set to False if you don't want to use EDA augmentation
-    num_epochs = 10  # Adjust as needed
-    batch_size = 16  # Adjust as needed
+    num_epochs = 200  # Adjust as needed
+    batch_size = 32  # Adjust as needed
     htc=True
 
     for mtl in [False, True]:
