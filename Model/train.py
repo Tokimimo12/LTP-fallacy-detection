@@ -150,7 +150,7 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, nu
     # save the model
     save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Models'))
     os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, "multi_task_distilbert.pth")
+    save_path = os.path.join(save_dir, "model.pth")
     torch.save(model.state_dict(), save_path)
 
 
@@ -344,4 +344,6 @@ if __name__ == "__main__":
         for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
             print(f"Training with {bert_model_name} model...")
             train_model(bert_model_name, mtl=mtl, augment=augment, num_epochs=num_epochs, batch_size=batch_size, htc=htc)
+        if htc:
+            break
     
