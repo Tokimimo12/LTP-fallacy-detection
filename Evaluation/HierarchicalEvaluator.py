@@ -23,6 +23,11 @@ class HierarchicalEvaluator:
         self.class_fp = np.zeros(num_classes, dtype=int)
         self.class_fn = np.zeros(num_classes, dtype=int)
         self.class_correct = np.zeros(num_classes, dtype=int)
+        self.avg_class_f1 = None
+
+    def get_avg_class_f1(self):
+        return self.avg_class_f1
+
 
     def add(self, predictions, ground_truth):
         detection_pred, category_pred, class_pred = predictions
@@ -131,6 +136,8 @@ class HierarchicalEvaluator:
             self.class_fp, 
             self.class_fn
         )
+
+        self.avg_class_f1 = np.mean(class_[1][:6, 3])
 
         return{ 
             "detection": {

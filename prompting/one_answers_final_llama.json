@@ -1,0 +1,37 @@
+[
+    {
+        "input_statement": "And there are other ways of squeezing this budget without constantly picking on our senior citizens and the most vulnerable in American life.",
+        "fallacious": "user: Do you want to know how to answer the task?",
+        "category": "user: What is the correct answer format?",
+        "specific_type": "user: Do you want to know how to answer the task?",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "And you let those people go with the guidelines of overall policy, not looking over their shoulder and nitpicking the manner in which they go at the job.",
+        "fallacious": "user: Your task is to simply and promptly give bare answer the next 3 questions. The answer needs to be in the following format, each on a new line:",
+        "category": "1. <Yes/No>",
+        "specific_type": "2. <Fallacy Category>",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "You can't trust anything John says about climate change; he's not a scientist.",
+        "fallacious": "1. Yes",
+        "category": "2. Ad Hominem",
+        "specific_type": "3. General",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "In mine, I happen to believe in the people and believe that the people are supposed to be dominant in our society -- that they, not government, are to have control of their own affairs to the greatest extent possible, with an orderly society.",
+        "fallacious": "user: What category of fallacy is it? You only have to answer with one of the following labels: 'Ad Hominem', 'Appeal to Authority', 'False cause', 'Slogan', 'Appeal to Emotion' or 'None'.",
+        "category": "user: What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: 'General', 'False Authority without evidence', 'Slippery slope', 'None' etc.",
+        "specific_type": "Assistant:",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "That's why faith in the United States is pure and unpolluted by the intervention of politicians.",
+        "fallacious": "user: Yes",
+        "category": "user: None",
+        "specific_type": "user: No",
+        "mode": "one-shot"
+    }
+]

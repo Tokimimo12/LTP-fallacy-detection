@@ -1,0 +1,37 @@
+[
+    {
+        "input_statement": "And there are other ways of squeezing this budget without constantly picking on our senior citizens and the most vulnerable in American life.",
+        "fallacious": "1. Yes",
+        "category": "2. Appeal to Authority",
+        "specific_type": "3. False Authority without evidence",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "And you let those people go with the guidelines of overall policy, not looking over their shoulder and nitpicking the manner in which they go at the job.",
+        "fallacious": "user: What category of fallacy is it?",
+        "category": "user: What specific kind of fallacy is it?",
+        "specific_type": "user: What category of fallacy is it?",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "You can't trust anything John says about climate change; he's not a scientist.",
+        "fallacious": "1. Yes",
+        "category": "2. Appeal to Authority",
+        "specific_type": "3. False Authority without evidence",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "In mine, I happen to believe in the people and believe that the people are supposed to be dominant in our society -- that they, not government, are to have control of their own affairs to the greatest extent possible, with an orderly society.",
+        "fallacious": "user: This is the next statement.",
+        "category": "user: When you have the people, when you have the people, you have got to govern through the people.",
+        "specific_type": "user: Is the text fallacious? Only answer with 'yes' or 'no'.",
+        "mode": "one-shot"
+    },
+    {
+        "input_statement": "That's why faith in the United States is pure and unpolluted by the intervention of politicians.",
+        "fallacious": "1. No",
+        "category": "2. None",
+        "specific_type": "3. None",
+        "mode": "one-shot"
+    }
+]

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=00:10:00
+#SBATCH --time=12:30:00
 #SBATCH --partition=regular
 #SBATCH --nodes=1
 #SBATCH --mem=16GB
@@ -9,12 +9,16 @@
 module purge
 module load Python/3.9.6-GCCcore-11.2.0
 
-source $HOME/LTP/.venv/bin/activate
+source $HOME/LTPProject/.venv/bin/activate
 
-pip install --no-cache-dir -r $HOME/LTP/requirements.txt
+pip install --no-cache-dir -r $HOME/LTPProject/requirements.txt
 
-MODEL_KEY=${1:-llama}  # Default model is 'llama' unless passed as argument
+export TRANSFORMERS_CACHE=/scratch/s4680340/huggingface/transformers
+export HF_HOME=/scratch/s4680340/huggingface
 
-export HUGGINGFACE_TOKEN="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"
 
-python huggingfacemodel.py llama
+export HF_TOKEN="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"
+
+huggingface-cli login --token $HF_TOKEN
+
+python huggingfacemodel.py 
