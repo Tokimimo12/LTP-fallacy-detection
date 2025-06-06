@@ -150,7 +150,7 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, nu
     # save the model
     save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Models'))
     os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, "model.pth")
+    save_path = os.path.join(save_dir, bert_model_name + "_htc" if htc else None + "_mtl" if mtl else None + ".pth")
     torch.save(model.state_dict(), save_path)
 
 
@@ -259,6 +259,7 @@ def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_s
 def get_data(augment, htc=False):
     data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
     # only use first 100 samples
+    data = data.head(100)
 
     if htc:
         class_to_name, category_to_name, detection_to_name = get_index_dicts()
