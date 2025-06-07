@@ -250,13 +250,6 @@ def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_s
 def get_data(augment, under_sample_non_fallacy = False):
     data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
 
-    # if under_sample_non_fallacy:
-    #     # create a new pd that undersamples the "no fallacy" class 
-    #     train_classes_no_fallacy = data[data['fallacy_detection'] == 0]
-    #     # undersample the "no fallacy" class to have the same number of samples as the smallest class
-    #     train_classes_no_fallacy = train_classes_no_fallacy.sample(n=200, random_state=42)
-    #     data = pd.concat([train_classes_no_fallacy, data[data['fallacy_detection'] != 0]])
-
     # make the texts and labels into lists
     snippets = data["snippet"].tolist()
     labels = data[["fallacy_detection", "category", "class"]].values.tolist()
