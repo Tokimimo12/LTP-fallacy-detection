@@ -2,7 +2,9 @@ from collections import Counter
 import numpy as np
 
 class HierarchicalEvaluator:    
-    def __init__(self, num_categories=3, num_classes=6):
+    def __init__(self, num_categories=3, num_classes=6, head_type="MTL 6"):
+        self.head_type = head_type
+
         # Detection (binary)
         self.detection_total = 0
         self.detection_tp = 0
@@ -51,7 +53,7 @@ class HierarchicalEvaluator:
         #  -------------- Category level -------------
 
         if detection_gt:
-            self.category_total+=1
+            self.category_total[category_gt] += 1
             if detection_pred == detection_gt: # detection is correct
                 if category_pred == category_gt:
                     self.category_correct[category_gt] += 1
@@ -65,8 +67,12 @@ class HierarchicalEvaluator:
 
 
         # -------------- Class level -------------
+        if self.head_type == "MTL 2":
+            class_gt = class_gt + (2 * category_gt) # convert from 2 classes per category to 6 classes
+            class_pred = class_pred + (2 * category_pred) # convert from 2 classes per category to 6 classes
+
         if detection_gt:
-            self.class_total += 1
+            self.class_total[class_gt] += 1
             if detection_pred == detection_gt and category_pred == category_gt:
                 if class_pred == class_gt:
                     self.class_correct[class_gt] += 1

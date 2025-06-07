@@ -4,13 +4,13 @@ from hierarchicalsoftmax import HierarchicalSoftmaxLinear
 
 
 class MultiTaskModel(nn.Module):
-    def __init__(self, base_model, hidden_size):
+    def __init__(self, base_model, hidden_size, num_classes = 6):
         super().__init__()
         self.bert = base_model
         
         self.detection_head = nn.Linear(in_features=hidden_size, out_features=2)
         self.group_head = nn.Linear(in_features=hidden_size, out_features=3)
-        self.classify_head = nn.Linear(in_features=hidden_size, out_features=6)
+        self.classify_head = nn.Linear(in_features=hidden_size, out_features=num_classes)
 
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
@@ -37,7 +37,7 @@ class SingleTaskModel(nn.Module):
 
         return logits_classify
     
-def get_model(device, model_name = "DistilBert", mtl=True, htc=False, root=None):
+def get_model(device, model_name = "DistilBert", head_type="MTL 6", htc=False, root=None):
     if model_name == "DistilBert":
         bert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
     elif model_name == "Bert":
@@ -47,12 +47,14 @@ def get_model(device, model_name = "DistilBert", mtl=True, htc=False, root=None)
     hidden_size = bert_model.config.hidden_size
     print("Hidden Size: ", hidden_size)
 
-    if mtl:
-        main_model = MultiTaskModel(bert_model, hidden_size)
+    if head_type == "MTL 6":
+        main_model = MultiTaskModel(bert_model, hidden_size, num_classes=6)
+    elif head_type == "MTL 2":
+        main_model = MultiTaskModel(bert_model, hidden_size, num_classes=2)
     elif htc:
         print("Using Hierarchical Tree Classifier")
         main_model = HTCModel(bert_model, root=root)  # Replace `root` with the actual root node if needed
-    else:
+    elif head_type == "STL":
         main_model = SingleTaskModel(bert_model, hidden_size)
 
     main_model.to(device)
