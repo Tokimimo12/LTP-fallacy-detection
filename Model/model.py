@@ -77,13 +77,9 @@ class HTCModel(nn.Module):
         super().__init__()
         self.bert = base_model
         
-        self.layer1 = nn.Linear(in_features=768, out_features=100)
-        self.relu = nn.ReLU()
-        self.output = HierarchicalSoftmaxLinear(in_features=100, root=root)
+        self.output = HierarchicalSoftmaxLinear(in_features=768, root=root)
 
     def forward(self, input_ids, attention_mask):
         y = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-        y = self.layer1(y.last_hidden_state[:, 0])
-        y = self.relu(y)
         y = self.output(y)
         return y
