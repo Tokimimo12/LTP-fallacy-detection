@@ -278,6 +278,15 @@ def get_data(augment, htc=False, under_sample_non_fallacy = False):
         print(f"Validation data length: {len(val_data)}")
         print(f"Test data length: {len(test_data)}")
 
+        if htc:
+            class_to_name, category_to_name, detection_to_name = get_index_dicts()
+            for split in [train_data, val_data, test_data]:
+                split.loc[split['fallacy_detection'] == 0, 'class'] = -1
+                split["class"] = split["class"].map(class_to_name)
+                split["category"] = split["category"].map(category_to_name)
+                split["fallacy_detection"] = split["fallacy_detection"].map(detection_to_name)
+                unique_classes = split["class"].unique()
+
         # Extract lists from split dataframes
         train_snippets = train_data["snippet"].tolist()
         train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
@@ -285,28 +294,9 @@ def get_data(augment, htc=False, under_sample_non_fallacy = False):
         val_labels = val_data[["fallacy_detection", "category", "class"]].values.tolist()
         test_snippets = test_data["snippet"].tolist()
         test_labels = test_data[["fallacy_detection", "category", "class"]].values.tolist()
-
-        if htc:
-            class_to_name, category_to_name, detection_to_name = get_index_dicts()
-            unique_classes = train_data["class"].unique()
-            train_data.loc[train_data['fallacy_detection'] == 0, 'class'] = -1
-            train_data["class"] = train_data["class"].map(class_to_name)
-            train_data["category"] = train_data["category"].map(category_to_name)
-            train_data["fallacy_detection"] = train_data["fallacy_detection"].map(detection_to_name)
-
-            return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes
     else:
         print("Loading full data and splitting...")
         data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
-
-        if htc:
-            class_to_name, category_to_name, detection_to_name = get_index_dicts()
-            data.loc[data['fallacy_detection'] == 0, 'class'] = -1
-            data["class"] = data["class"].map(class_to_name)
-            data["category"] = data["category"].map(category_to_name)
-            data["fallacy_detection"] = data["fallacy_detection"].map(detection_to_name)
-            unique_classes = data["class"].unique()
-
         # Split the dataframe directly 
         train_data, temp_data = train_test_split(data, test_size=0.2, random_state=42)
         val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
@@ -320,6 +310,15 @@ def get_data(augment, htc=False, under_sample_non_fallacy = False):
         val_data.to_csv("../data/MM_USED_fallacy/splits/val_data.csv", index=False)
         test_data.to_csv("../data/MM_USED_fallacy/splits/test_data.csv", index=False)
 
+        if htc:
+            class_to_name, category_to_name, detection_to_name = get_index_dicts()
+            for split in [train_data, val_data, test_data]:
+                split.loc[split['fallacy_detection'] == 0, 'class'] = -1
+                split["class"] = split["class"].map(class_to_name)
+                split["category"] = split["category"].map(category_to_name)
+                split["fallacy_detection"] = split["fallacy_detection"].map(detection_to_name)
+                unique_classes = split["class"].unique()
+
         # Extract lists from split dataframes
         train_snippets = train_data["snippet"].tolist()
         train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
@@ -328,6 +327,7 @@ def get_data(augment, htc=False, under_sample_non_fallacy = False):
         val_labels = val_data[["fallacy_detection", "category", "class"]].values.tolist()
         test_snippets = test_data["snippet"].tolist()
         test_labels = test_data[["fallacy_detection", "category", "class"]].values.tolist()
+
 
     if under_sample_non_fallacy:
         if htc:
