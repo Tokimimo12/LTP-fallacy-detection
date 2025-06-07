@@ -265,30 +265,69 @@ def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_s
 
 
 def get_data(augment, htc=False, under_sample_non_fallacy = False):
-    data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
 
-    if htc:
-        class_to_name, category_to_name, detection_to_name = get_index_dicts()
-        data.loc[data['fallacy_detection'] == 0, 'class'] = -1
-        data["class"] = data["class"].map(class_to_name)
-        data["category"] = data["category"].map(category_to_name)
-        data["fallacy_detection"] = data["fallacy_detection"].map(detection_to_name)
-        unique_classes = data["class"].unique()
+    # check if data is already split
+    if os.path.exists("../data/MM_USED_fallacy/splits/train_data.csv"):
+        print("Data already split, loading pre-split data...")
+        print("Loading pre-split data...")
+        train_data = pd.read_csv("../data/MM_USED_fallacy/splits/train_data.csv")
+        val_data = pd.read_csv("../data/MM_USED_fallacy/splits/val_data.csv")
+        test_data = pd.read_csv("../data/MM_USED_fallacy/splits/test_data.csv")
+        # print length of each split
+        print(f"Train data length: {len(train_data)}")
+        print(f"Validation data length: {len(val_data)}")
+        print(f"Test data length: {len(test_data)}")
 
-    # make the texts and labels into lists
-    snippets = data["snippet"].tolist()
-    labels = data[["fallacy_detection", "category", "class"]].values.tolist()
+        # Extract lists from split dataframes
+        train_snippets = train_data["snippet"].tolist()
+        train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
+        val_snippets = val_data["snippet"].tolist()
+        val_labels = val_data[["fallacy_detection", "category", "class"]].values.tolist()
+        test_snippets = test_data["snippet"].tolist()
+        test_labels = test_data[["fallacy_detection", "category", "class"]].values.tolist()
 
-    # shuffles the entire data before splitting 
-    data = data.sample(frac=1, random_state=42).reset_index(drop=True)
+        if htc:
+            class_to_name, category_to_name, detection_to_name = get_index_dicts()
+            unique_classes = train_data["class"].unique()
+            train_data.loc[train_data['fallacy_detection'] == 0, 'class'] = -1
+            train_data["class"] = train_data["class"].map(class_to_name)
+            train_data["category"] = train_data["category"].map(category_to_name)
+            train_data["fallacy_detection"] = train_data["fallacy_detection"].map(detection_to_name)
 
-    # data splitting train/val/test (80/10/10)
-    train_snippets, temp_snippets, train_labels, temp_labels = train_test_split(
-        snippets, labels, test_size=0.2, random_state=42
-    )
-    val_snippets, test_snippets, val_labels, test_labels = train_test_split(
-        temp_snippets, temp_labels, test_size=0.5, random_state=42
-    )
+            return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes
+    else:
+        print("Loading full data and splitting...")
+        data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
+
+        if htc:
+            class_to_name, category_to_name, detection_to_name = get_index_dicts()
+            data.loc[data['fallacy_detection'] == 0, 'class'] = -1
+            data["class"] = data["class"].map(class_to_name)
+            data["category"] = data["category"].map(category_to_name)
+            data["fallacy_detection"] = data["fallacy_detection"].map(detection_to_name)
+            unique_classes = data["class"].unique()
+
+        # Split the dataframe directly 
+        train_data, temp_data = train_test_split(data, test_size=0.2, random_state=42)
+        val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
+        print(f"Train data length: {len(train_data)}")
+        print(f"Validation data length: {len(val_data)}")
+        print(f"Test data length: {len(test_data)}")
+
+        # save the csv files for the splits
+        os.makedirs("../data/MM_USED_fallacy/splits", exist_ok=True)
+        train_data.to_csv("../data/MM_USED_fallacy/splits/train_data.csv", index=False)
+        val_data.to_csv("../data/MM_USED_fallacy/splits/val_data.csv", index=False)
+        test_data.to_csv("../data/MM_USED_fallacy/splits/test_data.csv", index=False)
+
+        # Extract lists from split dataframes
+        train_snippets = train_data["snippet"].tolist()
+        train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
+        # (Same for val and test)
+        val_snippets = val_data["snippet"].tolist()
+        val_labels = val_data[["fallacy_detection", "category", "class"]].values.tolist()
+        test_snippets = test_data["snippet"].tolist()
+        test_labels = test_data[["fallacy_detection", "category", "class"]].values.tolist()
 
     if under_sample_non_fallacy:
         if htc:
@@ -311,7 +350,6 @@ def get_data(augment, htc=False, under_sample_non_fallacy = False):
             # update the train_snippets and train_labels to the new undersampled data
             train_snippets = train_data["snippet"].tolist()
             train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
-            print(train_data)
 
         else:
             # Under-sample the "no fallacy" class in the training set (and keep train set in same format)
