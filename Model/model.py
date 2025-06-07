@@ -81,5 +81,6 @@ class HTCModel(nn.Module):
 
     def forward(self, input_ids, attention_mask):
         y = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        y = y.last_hidden_state[:, 0]
         y = self.output(y)
         return y
