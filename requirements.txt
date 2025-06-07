@@ -16,4 +16,4 @@ transformers
 hierarchicalsoftmax
 nltk
 tenacity
-mamkit
+accelerate
