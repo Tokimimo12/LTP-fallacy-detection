@@ -291,25 +291,48 @@ def get_data(augment, htc=False, under_sample_non_fallacy = False):
     )
 
     if under_sample_non_fallacy:
-        # Under-sample the "no fallacy" class in the training set (and keep train set in same format)
-        train_classes_no_fallacy = pd.DataFrame({
-            "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] == 0],
-            "fallacy_detection": [label[0] for label in train_labels if label[0] == 0],
-            "category": [label[1] for label in train_labels if label[0] == 0],
-            "class": [label[2] for label in train_labels if label[0] == 0]
-        })
-        # undersample the "no fallacy" class to have the same number of samples as the smallest class
-        train_classes_no_fallacy = train_classes_no_fallacy.sample(n=200, random_state=42)
-        # create a new pd that has the undersampled "no fallacy" class and the rest of the training data
-        train_data = pd.DataFrame({
-            "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] != 0] + train_classes_no_fallacy["snippet"].tolist(),
-            "fallacy_detection": [label[0] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["fallacy_detection"].tolist(),
-            "category": [label[1] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["category"].tolist(),
-            "class": [label[2] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["class"].tolist()
-        })
-        # update the train_snippets and train_labels to the new undersampled data
-        train_snippets = train_data["snippet"].tolist()
-        train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
+        if htc:
+            # Under-sample the "no fallacy" class in the training set (and keep train set in same format)
+            train_classes_no_fallacy = pd.DataFrame({
+                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] == 'no fallacy'],
+                "fallacy_detection": [label[0] for label in train_labels if label[0] == 'no fallacy'],
+                "category": [label[1] for label in train_labels if label[0] == 'no fallacy'],
+                "class": [label[2] for label in train_labels if label[0] == 'no fallacy']
+            })
+            # undersample the "no fallacy" class to have the same number of samples as the smallest class
+            train_classes_no_fallacy = train_classes_no_fallacy.sample(n=200, random_state=42)
+            # create a new pd that has the undersampled "no fallacy" class and the rest of the training data
+            train_data = pd.DataFrame({
+                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] != 'no fallacy'] + train_classes_no_fallacy["snippet"].tolist(),
+                "fallacy_detection": [label[0] for label in train_labels if label[0] != 'no fallacy'] + train_classes_no_fallacy["fallacy_detection"].tolist(),
+                "category": [label[1] for label in train_labels if label[0] != 'no fallacy'] + train_classes_no_fallacy["category"].tolist(),
+                "class": [label[2] for label in train_labels if label[0] != 'no fallacy'] + train_classes_no_fallacy["class"].tolist()
+            })
+            # update the train_snippets and train_labels to the new undersampled data
+            train_snippets = train_data["snippet"].tolist()
+            train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
+            print(train_data)
+
+        else:
+            # Under-sample the "no fallacy" class in the training set (and keep train set in same format)
+            train_classes_no_fallacy = pd.DataFrame({
+                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] == 0],
+                "fallacy_detection": [label[0] for label in train_labels if label[0] == 0],
+                "category": [label[1] for label in train_labels if label[0] == 0],
+                "class": [label[2] for label in train_labels if label[0] == 0]
+            })
+            # undersample the "no fallacy" class to have the same number of samples as the smallest class
+            train_classes_no_fallacy = train_classes_no_fallacy.sample(n=200, random_state=42)
+            # create a new pd that has the undersampled "no fallacy" class and the rest of the training data
+            train_data = pd.DataFrame({
+                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] != 0] + train_classes_no_fallacy["snippet"].tolist(),
+                "fallacy_detection": [label[0] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["fallacy_detection"].tolist(),
+                "category": [label[1] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["category"].tolist(),
+                "class": [label[2] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["class"].tolist()
+            })
+            # update the train_snippets and train_labels to the new undersampled data
+            train_snippets = train_data["snippet"].tolist()
+            train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
 
     if augment:
         train_data = pd.DataFrame({
@@ -338,7 +361,7 @@ def get_data(augment, htc=False, under_sample_non_fallacy = False):
 def train_model(bert_model_name = "DistilBert", head_type="MTL 6", augment=True, num_epochs=5, batch_size=8, htc=False):
     # Load data
     if htc:
-            train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes = get_data(augment=augment, htc=htc)
+            train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes = get_data(augment=augment, htc=htc, under_sample_non_fallacy = True)
             root = get_tree()
             loss_weights = None
     else:
@@ -372,6 +395,9 @@ if __name__ == "__main__":
     htc=True
 
     for head_type in ["MTL 6", "MTL 2", "STL"]:
+        if head_type != "STL":
+            print("skipping MTL 2 and MTL 6 for now")
+            continue
         print("Prediction Head Type: ", head_type)
         for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
             print(f"################ Training with {bert_model_name} model...")
