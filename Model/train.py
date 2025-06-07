@@ -63,7 +63,7 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, nu
 
     # Early stopping parameters
     best_val_loss = float('inf')
-    patience = 30
+    patience = 10
     patience_counter = 0
 
     train_losses = []
@@ -335,7 +335,7 @@ if __name__ == "__main__":
     # Example usage
     mtl = False  # Set to False for single-task learning
     augment = True  # Set to False if you don't want to use EDA augmentation
-    num_epochs = 200  # Adjust as needed
+    num_epochs = 20  # Adjust as needed
     batch_size = 32  # Adjust as needed
     htc=True
 
