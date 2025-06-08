@@ -8,6 +8,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 import sys
 import pandas as pd
 import os
+from utils import get_possible_outputs
 
 random.seed(4)
 
@@ -18,25 +19,28 @@ def load_statements(filename: str) -> list:
     return statements
 
 def prompt_zeroshot(text:str) -> str:
+    _, category_labels, class_labels = get_possible_outputs()
     messages = [
         {"role": "system", "content": "Your task is to simply and promptly give bare answer the next 3 questions. The answer needs to be in the following format, each on a new line: \n1. <Yes/No>\n2. <Fallacy Category>\n3. <Specific Type>.\n Do not generate anything beyond these three lines. Do not explain or continue after the third line."},
-        {"role": "user", "content": text},
-        {"role": "user", "content": "Is the text fallacious? Only answer with 'yes' or 'no'."},
-        {"role": "user", "content": "What category of fallacy is it? You only have to answer with one of the following labels: 'Ad Hominem', 'Appeal to Authority', 'False cause', 'Slogan', 'Appeal to Emotion' or 'None'."},
-        {"role": "user", "content": "What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: 'General', 'False Authority without evidence', 'Slippery slope', 'None' etc."}
+        {"role": "user", "content": f"Text: {text}"},
+        {"role": "user", "content": "1. Is the text fallacious? Only answer with 'yes' or 'no'."},
+        {"role": "user", "content": f"2. What category of fallacy is it? You only have to answer with one of the following labels: {category_labels}, or ['None'] if it is not fallacious."},
+        {"role": "user", "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: {class_labels}, or ['None'] if it is not fallacious."},
     ]
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
     prompt += "\nAssistant:\n"  # hint model it's time to respond
+    print(f"Generated prompt:\n{prompt}\n")
 
     return prompt
 
 def prompt_oneshot(text:str) -> str:
+    # example from train set, sample 466
     example = (
-        "The American people see this debt, and they know it's got to come down.\n"
+        "We have to practice what we preach.\n"
         "1. Yes\n"
-        "2. Fallacy of Credibility\n"
-        "3. Appeal to Authority\n"
+        "2. Fallacy of Emotion\n"
+        "3. Slogans\n"
     )
 
     messages = [
@@ -46,10 +50,11 @@ def prompt_oneshot(text:str) -> str:
         {"role": "user", "content": "Below is one example of how to answer the task:"},
         {"role": "user", "content": example},
         {"role": "user", "content": "Now answer the following statement:"},
-        {"role": "user", "content": text},
-        {"role": "user", "content": "Is the text fallacious? Only answer with 'yes' or 'no'."},
-        {"role": "user", "content": "What category of fallacy is it? You only have to answer with one of the following labels: 'Ad Hominem', 'Appeal to Authority', 'False cause', 'Slogan', 'Appeal to Emotion' or 'None'."},
-        {"role": "user", "content": "What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: 'General', 'False Authority without evidence', 'Slippery slope', 'None' etc."}
+        {"role": "user", "content": "Now it's your turn:"},
+        {"role": "user", "content": f"Text: {text}"},
+        {"role": "user", "content": "1. Is the text fallacious? Only answer with 'yes' or 'no'."},
+        {"role": "user", "content": f"2. What category of fallacy is it? You only have to answer with one of the following labels: {category_labels}, or ['None'] if it is not fallacious."},
+        {"role": "user", "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: {class_labels}, or ['None'] if it is not fallacious."},
     ]
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
@@ -84,7 +89,6 @@ def process_statements(statements: list, generator, mode) -> list:
         elif mode == "one-shot":
             prompt = prompt_oneshot(text)
         output = generator(prompt, max_new_tokens=128)[0]["generated_text"]
-        print(output)
         fallacious, category, specific_type = extract_answers(output)
         results.append({
             "input_statement": text,
@@ -94,25 +98,6 @@ def process_statements(statements: list, generator, mode) -> list:
             "mode": mode,
         })
     return results
-
-def save_results(results: list, filename: str):
-    with open(filename, "w") as f:
-        json.dump(results, f, indent=4)
-    print(f"Saved {len(results)} results to {filename}")
-
-def zeroshot(generator, model):
-    mode = "zero-shot"
-    statements = load_statements("statements.json")
-    results = process_statements(statements, generator, mode)
-    save_results(results, f"zeroshot_answers_final_{model}.json")
-
-def oneshot(generator,model):
-    mode = "one-shot"
-    statements = load_statements("statements.json")
-    results = process_statements(statements, generator, mode)
-    save_results(results, f"one_answers_final_{model}.json")
-
-
 
 if __name__ == "__main__":
     MODE = "zero-shot"  # or "one-shot"
@@ -138,7 +123,7 @@ if __name__ == "__main__":
     gt_detection = []
     gt_categories = []
     gt_classes = []
-
+    counter = 0
 
     for model in generation_models:
         selected_model = model
@@ -161,7 +146,11 @@ if __name__ == "__main__":
 
         # loop through the data
         for index, row in data.iterrows():
-            indices.append(index)
+            index_ID = row['ID']
+            counter += 1
+            if counter > 5:  # limit to 10 samples for testing
+                break
+            indices.append(index_ID)
             statements.append(row['snippet'])
             gt_detection.append(row['fallacy_detection'])
             gt_categories.append(row['category'])
@@ -171,16 +160,13 @@ if __name__ == "__main__":
             detection = row['fallacy_detection']
             category = row['category']
             specific_type = row['class']
-            print(f"Processing snippet: {snippet}")
 
             answer = process_statements([snippet], generator, MODE)
-            print(answer)
+            print("answer:", answer)
 
             pred_detection.append(answer[0]['fallacious'])
             pred_categories.append(answer[0]['category'])
             pred_classes.append(answer[0]['specific_type'])
-
-            break
         
         break
 
