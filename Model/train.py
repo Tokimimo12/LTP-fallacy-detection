@@ -17,7 +17,6 @@ from Augment.eda_augmentation import eda_augmentation
 from data.MM_USED_fallacy.MM_Dataset import MM_Dataset, HTC_MM_Dataset
 from data.MM_USED_fallacy.data_analysis import plot_fallacy_detection_distribution, plot_category_distribution, plot_class_distribution
 from Evaluation.HierarchicalEvaluator import HierarchicalEvaluator
-from HTC_utils import get_tree, get_index_dicts, get_tree_dicts, post_process_predictions
 from Utils.utils import *
 
 nltk.download('wordnet')
