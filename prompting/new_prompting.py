@@ -43,6 +43,8 @@ def prompt_oneshot(text:str) -> str:
         "3. Slogans\n"
     )
 
+    _, category_labels, class_labels = get_possible_outputs()
+
     messages = [
         {   "role": "system",
             "content": "Your task is to simply and promptly give bare answer the next 3 questions. The answer needs to be in the following format, each on a new line: \n1. <Yes/No>\n2. <Fallacy Category>\n3. <Specific Type>.\n Do not generate anything beyond these three lines. Do not explain or continue after the third line."
