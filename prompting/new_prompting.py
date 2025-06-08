@@ -150,7 +150,8 @@ if __name__ == "__main__":
         for index, row in data.iterrows():
             index_ID = row['ID']
             counter += 1
-            if counter > 5:  # limit to 10 samples for testing
+            if counter > 1:  # limit to 1 samples for testing REMOVE LATER
+                print("Reached the limit of 1 sample for testing.")
                 break
             indices.append(index_ID)
             statements.append(row['snippet'])
@@ -184,4 +185,5 @@ if __name__ == "__main__":
         'gt_classes': gt_classes
     })	    
     print(results_df)
-    results_df.to_csv(os.path.join(f"results_{selected_model}.csv"), index=False)
+    results_df.to_csv(os.path.join('results', f"results_{selected_model}.csv"), index=False)
+    
