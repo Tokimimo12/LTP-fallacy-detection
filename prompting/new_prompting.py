@@ -7,6 +7,7 @@ from transformers import pipeline, AutoConfig
 from tenacity import retry, stop_after_attempt, wait_fixed
 import sys
 import pandas as pd
+import os
 
 random.seed(4)
 
@@ -129,6 +130,16 @@ if __name__ == "__main__":
 
     data = pd.read_csv("../data/MM_USED_fallacy/splits/test_data.csv")
 
+    indices = []
+    statements = []
+    pred_detection = []
+    pred_categories = []
+    pred_classes = []
+    gt_detection = []
+    gt_categories = []
+    gt_classes = []
+
+
     for model in generation_models:
         selected_model = model
         model_name = generation_models[selected_model]
@@ -150,6 +161,12 @@ if __name__ == "__main__":
 
         # loop through the data
         for index, row in data.iterrows():
+            indices.append(index)
+            statements.append(row['snippet'])
+            gt_detection.append(row['fallacy_detection'])
+            gt_categories.append(row['category'])
+            gt_classes.append(row['class'])
+
             snippet = row['snippet']
             detection = row['fallacy_detection']
             category = row['category']
@@ -159,6 +176,24 @@ if __name__ == "__main__":
             answer = process_statements([snippet], generator, MODE)
             print(answer)
 
+            pred_detection.append(answer[0]['fallacious'])
+            pred_categories.append(answer[0]['category'])
+            pred_classes.append(answer[0]['specific_type'])
+
             break
         
         break
+
+    # Save the results to a CSV file
+    results_df = pd.DataFrame({
+        'index': indices,
+        'statement': statements,
+        'pred_detection': pred_detection,
+        'pred_categories': pred_categories,
+        'pred_classes': pred_classes,
+        'gt_detection': gt_detection,
+        'gt_categories': gt_categories,
+        'gt_classes': gt_classes
+    })	    
+    print(results_df)
+    results_df.to_csv(os.path.join(f"results_{selected_model}.csv"), index=False)
