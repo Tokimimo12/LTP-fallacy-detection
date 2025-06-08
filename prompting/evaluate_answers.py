@@ -94,7 +94,10 @@ if __name__ == "__main__":
                 "class_accuracy": evaluator.class_correct.sum() / evaluator.class_total.sum() if evaluator.class_total.sum() > 0 else 0,
                 "avg_class_f1": avg_f1
             }
-            results_file = os.path.join(results_dir, f"{model_name}_evaluation_results.json")
+
+            # remove csv from filename
+            filename_no_csv = filename.replace('.csv', '')
+            results_file = os.path.join(results_dir, f"evaluation_results_{filename_no_csv}.json")
             with open(results_file, 'w') as f:
                 json.dump(results, f, indent=4)
             print(f"Results saved to {results_file}")
