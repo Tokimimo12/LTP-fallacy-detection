@@ -1,5 +1,6 @@
 import torch.nn as nn
 from transformers import DistilBertModel, BertModel, RobertaModel, DistilBertTokenizer, BertTokenizer, RobertaTokenizer
+from hierarchicalsoftmax import HierarchicalSoftmaxLinear
 
 
 class MultiTaskModel(nn.Module):
@@ -36,7 +37,7 @@ class SingleTaskModel(nn.Module):
 
         return logits_classify
     
-def get_model(device, model_name = "DistilBert", head_type="MTL 6"):
+def get_model(device, model_name = "DistilBert", head_type="MTL 6", htc=False, root=None):
     if model_name == "DistilBert":
         bert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
     elif model_name == "Bert":
@@ -50,6 +51,9 @@ def get_model(device, model_name = "DistilBert", head_type="MTL 6"):
         main_model = MultiTaskModel(bert_model, hidden_size, num_classes=6)
     elif head_type == "MTL 2":
         main_model = MultiTaskModel(bert_model, hidden_size, num_classes=2)
+    elif htc:
+        print("Using Hierarchical Tree Classifier")
+        main_model = HTCModel(bert_model, root=root)  # Replace `root` with the actual root node if needed
     elif head_type == "STL":
         main_model = SingleTaskModel(bert_model, hidden_size)
 
@@ -68,3 +72,15 @@ def get_tokenizer(model_name = "DistilBert"):
     return tokenizer
 
 
+class HTCModel(nn.Module):
+    def __init__(self, base_model, root):
+        super().__init__()
+        self.bert = base_model
+        
+        self.output = HierarchicalSoftmaxLinear(in_features=768, root=root)
+
+    def forward(self, input_ids, attention_mask):
+        y = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        y = y.last_hidden_state[:, 0]
+        y = self.output(y)
+        return y
