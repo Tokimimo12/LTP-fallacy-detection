@@ -185,5 +185,5 @@ if __name__ == "__main__":
         'gt_classes': gt_classes
     })	    
     print(results_df)
-    results_df.to_csv(os.path.join('results', f"results_{selected_model}.csv"), index=False)
+    results_df.to_csv(os.path.join('results', f"{MODE}_{selected_model}.csv"), index=False)
     
