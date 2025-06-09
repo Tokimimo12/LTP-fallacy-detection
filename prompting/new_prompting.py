@@ -102,24 +102,6 @@ def extract_answers(answer: str) -> tuple:
         specific_type = lines[2].strip()
     return fallacious, category, specific_type
 
-def process_statements(statements: list, generator, mode) -> list:
-    results = []
-    for text in statements:
-        if mode == "zero-shot":
-            prompt = prompt_zeroshot(text)
-        elif mode == "one-shot":
-            prompt = prompt_oneshot(text)
-        output = generator(prompt, max_new_tokens=128)[0]["generated_text"]
-        fallacious, category, specific_type = extract_answers(output)
-        results.append({
-            "input_statement": text,
-            "fallacious": fallacious,
-            "category": category,
-            "specific_type": specific_type,
-            "mode": mode,
-        })
-    return results
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process statements with a language model.")
     parser.add_argument("--mode", type=str, choices=["zero-shot", "one-shot"], default="zero-shot", help="Mode of prompting: zero-shot or one-shot.")
