@@ -10,13 +10,15 @@ import pandas as pd
 import os
 from utils import get_possible_outputs
 
+import argparse
+
 random.seed(4)
 
-def load_statements(filename: str) -> list:
-    with open(filename, "r") as f:
-        statements = json.load(f)
-    print(f"Loaded {len(statements)} statements from {filename}")
-    return statements
+def prompt_zeroshot_hierarchical(text: str) -> str:
+    pass
+
+def prompt_oneshot_hierarchical(text: str) -> str:
+    pass
 
 def prompt_zeroshot(text:str) -> str:
     _, category_labels, class_labels = get_possible_outputs()
@@ -30,7 +32,6 @@ def prompt_zeroshot(text:str) -> str:
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
     prompt += "\nAssistant:\n"  # hint model it's time to respond
-    print(f"Generated prompt:\n{prompt}\n")
 
     return prompt
 
@@ -102,11 +103,16 @@ def process_statements(statements: list, generator, mode) -> list:
     return results
 
 if __name__ == "__main__":
-    MODE = "zero-shot"  # or "one-shot"
+    parser = argparse.ArgumentParser(description="Process statements with a language model.")
+    parser.add_argument("--mode", type=str, choices=["zero-shot", "one-shot"], default="zero-shot", help="Mode of prompting: zero-shot or one-shot.")
+    parser.add_argument("--model", type=str, default="mistralai", help="Model to use for generation.")
+    args = parser.parse_args()
+    MODE = args.mode
+    print(f"Running in {MODE} mode.")
 
     #GENERATiION CONFIGURATION
     generation_models = {
-    # "phi-4": "microsoft/phi-4",#apparently is a text generation model and does not support question-answering tasks  
+    "phi-4": "microsoft/phi-4",#apparently is a text generation model and does not support question-answering tasks  
     "menda": "weathermanj/Menda-3b-Optim-200" ,
     "mistralai": "mistralai/Mistral-7B-v0.1",
     "tinyllama" : "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
@@ -126,52 +132,48 @@ if __name__ == "__main__":
     gt_categories = []
     gt_classes = []
     counter = 0
+    
+    model_name = generation_models[args.model]
+    print(f"Using model: {model_name}")
 
-    for model in generation_models:
-        selected_model = model
-        model_name = generation_models[selected_model]
-        print(f"Using model: {model_name}")
-
-        try:
-            config = AutoConfig.from_pretrained("meta-llama/Llama-3.2-3B")
-            print("Access successful!")
-        except Exception as e:
-            print(f"Still having issues: {e}")
+    try:
+        config = AutoConfig.from_pretrained("meta-llama/Llama-3.2-3B")
+        print("Access successful!")
+    except Exception as e:
+        print(f"Still having issues: {e}")
 
 
-        generator = pipeline(
-            "text-generation",
-            model=model_name,
-            model_kwargs={"torch_dtype": "auto"},
-            device_map="auto",
-        )
+    generator = pipeline(
+        "text-generation",
+        model=model_name,
+        model_kwargs={"torch_dtype": "auto"},
+        device_map="auto",
+    )
+    #print which device the model is on
+    print(f"Model is loaded on device: {generator.device}")
 
-        # loop through the data
-        for index, row in data.iterrows():
-            index_ID = row['ID']
-            counter += 1
-            if counter > 1:  # limit to 1 samples for testing REMOVE LATER
-                print("Reached the limit of 1 sample for testing.")
-                break
-            indices.append(index_ID)
-            statements.append(row['snippet'])
-            gt_detection.append(row['fallacy_detection'])
-            gt_categories.append(row['category'])
-            gt_classes.append(row['class'])
+    # loop through the data
+    for index, row in data.iterrows():
+        print(f"Processing row {index + 1}/{len(data)}: {row['ID']}")
+        index_ID = row['ID']
+        counter += 1
 
-            snippet = row['snippet']
-            detection = row['fallacy_detection']
-            category = row['category']
-            specific_type = row['class']
+        indices.append(index_ID)
+        statements.append(row['snippet'])
+        gt_detection.append(row['fallacy_detection'])
+        gt_categories.append(row['category'])
+        gt_classes.append(row['class'])
 
-            answer = process_statements([snippet], generator, MODE)
-            print("answer:", answer)
+        snippet = row['snippet']
+        detection = row['fallacy_detection']
+        category = row['category']
+        specific_type = row['class']
 
-            pred_detection.append(answer[0]['fallacious'])
-            pred_categories.append(answer[0]['category'])
-            pred_classes.append(answer[0]['specific_type'])
-        
-        break
+        answer = process_statements([snippet], generator, MODE)
+
+        pred_detection.append(answer[0]['fallacious'])
+        pred_categories.append(answer[0]['category'])
+        pred_classes.append(answer[0]['specific_type'])
 
     # Save the results to a CSV file
     results_df = pd.DataFrame({
@@ -184,6 +186,5 @@ if __name__ == "__main__":
         'gt_categories': gt_categories,
         'gt_classes': gt_classes
     })	    
-    print(results_df)
-    results_df.to_csv(os.path.join('results', f"{MODE}_{selected_model}.csv"), index=False)
+    results_df.to_csv(os.path.join('results', f"{MODE}_{args.model}.csv"), index=False)
     
