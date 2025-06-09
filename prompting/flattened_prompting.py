@@ -45,13 +45,12 @@ class FallacyDataset(Dataset):
 def prompt_zeroshot(text:str) -> str:
     _, category_labels, class_labels = get_possible_outputs()
     messages = [
-        {"role": "system", "content": "Your task is to simply and promptly give bare answer the next 3 questions. The answer needs to be in the following format, each on a new line: \n1. <Yes/No>\n2. <Fallacy Category>\n3. <Specific Type>.\n Do not generate anything beyond these three lines. Do not explain or continue after the third line."},
+        {   "role": "system",
+            "content": "Your task is to simply and promptly give bare answer the next question. The answer needs to be in the following format: <Fallacy Type>.\n Do not generate anything beyond this line. Do not explain or continue after the first line."},
+        {"role": "user", "content": "Now it's your turn:"},
         {"role": "user", "content": f"Text: {text}"},
-        {"role": "user", "content": "1. Is the text fallacious? Only answer with 'yes' or 'no'."},
-        {"role": "user", "content": f"2. What category of fallacy is it? You only have to answer with one of the following labels: {category_labels}, or ['None'] if it is not fallacious."},
-        {"role": "user", "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
+        {"role": "user", "content": "1. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
     ]
-
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
     prompt += "\nAssistant:\n"  # hint model it's time to respond
     return prompt
@@ -60,23 +59,19 @@ def prompt_oneshot(text:str) -> str:
     # example from train set, sample 466
     example = (
         "We have to practice what we preach.\n"
-        "1. Yes\n"
-        "2. Fallacy of Emotion\n"
-        "3. Slogans\n"
+        "1. Slogans\n"
     )
 
     _, category_labels, class_labels = get_possible_outputs()
 
     messages = [
         {   "role": "system",
-            "content": "Your task is to simply and promptly give bare answer the next 3 questions. The answer needs to be in the following format, each on a new line: \n1. <Yes/No>\n2. <Fallacy Category>\n3. <Specific Type>.\n Do not generate anything beyond these three lines. Do not explain or continue after the third line."},
+            "content": "Your task is to simply and promptly give bare answer the next question. The answer needs to be in the following format: <Fallacy Type>.\n Do not generate anything beyond this line. Do not explain or continue after the first line."},
         {"role": "user", "content": "Below is one example of how to answer the task:"},
         {"role": "user", "content": example},
         {"role": "user", "content": "Now it's your turn:"},
         {"role": "user", "content": f"Text: {text}"},
-        {"role": "user", "content": "1. Is the text fallacious? Only answer with 'yes' or 'no'."},
-        {"role": "user", "content": f"2. What category of fallacy is it? You only have to answer with one of the following labels: {category_labels}, or ['None'] if it is not fallacious."},
-        {"role": "user", "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
+        {"role": "user", "content": "1. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
     ]
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
@@ -84,23 +79,63 @@ def prompt_oneshot(text:str) -> str:
     return prompt
 
 def extract_answers(answer: str) -> tuple:
+    from utils import get_class_to_category
+    
     lines = answer.strip().splitlines()
-
+    class_to_category = get_class_to_category()
+    
     try:
-        # Find the index of the assistant's response and save the 3 answers right after it
+        # Find the index of the assistant's response
         assistant_index = next(i for i, line in enumerate(lines) if line.strip().lower().startswith("assistant:"))
-        next_lines = lines[assistant_index + 1 : assistant_index + 4]
-        if len(next_lines) < 3:
-            raise ValueError("Not enough lines returned by model.")
-        fallacious, category, specific_type = [line.strip() for line in next_lines]
+        
+        # Get the line after "Assistant:"
+        response_line = lines[assistant_index + 1].strip()
+        
+        # Extract the fallacy type from "1. <fallacy type>"
+        if response_line.startswith("1."):
+            specific_type = response_line.split("1.", 1)[1].strip()
+        else:
+            specific_type = response_line
+        
+        # Clean up the specific type by removing brackets if present
+        if specific_type.startswith("[") and specific_type.endswith("]"):
+            specific_type = specific_type[1:-1]
+            
+        # Set fallacious to "Yes" if a fallacy is identified, "No" otherwise
+        fallacious = "Yes" if specific_type.lower() != "none" else "No"
+        
+        # Get the corresponding category using the class_to_category mapping
+        category = class_to_category.get(specific_type, "None")
+        
         return fallacious, category, specific_type
     except (StopIteration, IndexError, ValueError):
-        # otherwise just save the last 3 lines of your response
-        lines = answer.strip().splitlines()[-3:]  # last 3 lines expected
-        fallacious = lines[0].strip()
-        category = lines[1].strip()
-        specific_type = lines[2].strip()
-    return fallacious, category, specific_type
+        # Handle the case where response doesn't follow expected format
+        try:
+            # Try to extract the last line which might contain the answer
+            last_line = lines[-1].strip()
+            
+            # Check if it's in "1. <fallacy type>" format
+            if last_line.startswith("1."):
+                specific_type = last_line.split("1.", 1)[1].strip()
+            else:
+                specific_type = last_line
+                
+            # Clean up the specific type by removing brackets if present
+            if specific_type.startswith("[") and specific_type.endswith("]"):
+                specific_type = specific_type[1:-1]
+                
+            fallacious = "Yes" if specific_type.lower() != "none" else "No"
+            
+            # Get the corresponding category using the class_to_category mapping
+            category = class_to_category.get(specific_type, "None")
+            if category is None:
+                category = "None"
+            
+            return fallacious, category, specific_type
+            
+        except (IndexError, ValueError):
+            # If all else fails, return default values
+            return "None", "None", "None"
 
 def process_statements(statements: list, generator, mode) -> list:
     results = []
@@ -213,6 +248,5 @@ if __name__ == "__main__":
     
     # Convert results to DataFrame
     results_df = pd.DataFrame(all_results)
-    results_df.to_csv(os.path.join('results', f"{MODE}_{args.model}.csv"), index=False)
-    print(f"Results saved to {os.path.join('results', f'{MODE}_{args.model}.csv')}")
-    
+    results_df.to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}.csv"), index=False)
+    print(f"Results saved to {os.path.join('results', f'flattened_{MODE}_{args.model}.csv')}")

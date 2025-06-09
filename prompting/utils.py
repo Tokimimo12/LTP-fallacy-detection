@@ -36,3 +36,15 @@ def get_possible_outputs():
     class_labels = ["Appeal to Emotion", "Appeal to Authority", "Ad Hominem", "False Cause", "Slippery Slope", "Slogans"]
 
     return detection_labels, category_labels, class_labels
+
+def get_class_to_category():
+    class_to_category = {
+        "Appeal to Emotion": "Fallacy of Emotion",
+        "Appeal to Authority": "Fallacy of Credibility",
+        "Ad Hominem": "Fallacy of Credibility",
+        "False Cause": "Fallacy of Logic",
+        "Slippery Slope": "Fallacy of Logic",
+        "Slogans": "Fallacy of Emotion",
+        "None": "None"
+    }
+    return class_to_category
