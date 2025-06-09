@@ -1,7 +1,0 @@
-{
-    "model_name": "menda",
-    "detection_accuracy": 1.0,
-    "category_accuracy": 0,
-    "class_accuracy": 0,
-    "avg_class_f1": 0.0
-}

@@ -13,5 +13,9 @@ data/MM_USED_fallacy/*.pkl
 Saved_Models/
 
 Model/htc_loss.ipynb
+prompting/results/zero-shot_simple/*.csv
+prompting/results/zero-shot_simple/*.json
+prompting/results/*.csv
+prompting/results/*.json
 
 
