@@ -165,7 +165,11 @@ if __name__ == "__main__":
     # Load tokenizer and set padding to left
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.padding_side = 'left'
-
+    
+    # Set pad_token to eos_token if it's not set
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token_id = tokenizer.eos_token_id
 
     generator = pipeline(
         "text-generation",
@@ -211,4 +215,5 @@ if __name__ == "__main__":
     # Convert results to DataFrame
     results_df = pd.DataFrame(all_results)
     results_df.to_csv(os.path.join('results', f"{MODE}_{args.model}.csv"), index=False)
+    print(f"Results saved to {os.path.join('results', f'{MODE}_{args.model}.csv')}")
     

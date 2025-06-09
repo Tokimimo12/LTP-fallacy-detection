@@ -33,7 +33,6 @@ cd $TMPDIR/LTP-fallacy-detection/prompting
 
 # Set HuggingFace cache to TMPDIR which should have more space
 export HF_HOME=$TMPDIR/huggingface
-export TRANSFORMERS_CACHE=$TMPDIR/huggingface/transformers
 mkdir -p $HF_HOME
 
 # export token
@@ -52,4 +51,4 @@ python3 -u new_prompting.py --mode zero-shot --model tinyllama
 
 ############ SAVING RESULTS
 # Save results to permanent storage
-cp -r $TMPDIR/results /scratch/$USER/LTP/LTP-fallacy-detection/prompting_results/$SLURM_JOB_ID
+cp -r $TMPDIR/LTP-fallacy-detection/prompting/results /scratch/$USER/LTP/LTP-fallacy-detection/prompting_results/$SLURM_JOB_ID
