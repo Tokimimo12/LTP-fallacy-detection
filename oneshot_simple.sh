@@ -17,7 +17,7 @@ module load Python/3.11.5-GCCcore-13.2.0
 source $HOME/venvs/ltp/bin/activate
 
 # Create result directory
-mkdir -p /scratch/$USER/LTP/LTP-fallacy-detection/prompting_results/$SLURM_JOB_ID
+mkdir -p /scratch/$USER/LTP/LTP-fallacy-detection/prompting_results/simple/$SLURM_JOB_ID
 
 ############ GETTING THE CODE
 mkdir -p $TMPDIR 
@@ -51,4 +51,4 @@ python3 -u new_prompting.py --mode one-shot --model tinyllama
 
 ############ SAVING RESULTS
 # Save results to permanent storage
-cp -r $TMPDIR/LTP-fallacy-detection/results /scratch/$USER/LTP/LTP-fallacy-detection/prompting_results/$SLURM_JOB_ID
+cp -r $TMPDIR/LTP-fallacy-detection/prompting/results /scratch/$USER/LTP/LTP-fallacy-detection/prompting_results/simple/$SLURM_JOB_ID
