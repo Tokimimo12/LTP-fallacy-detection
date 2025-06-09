@@ -27,8 +27,13 @@ class HierarchicalEvaluator:
         self.class_correct = np.zeros(num_classes, dtype=int)
         self.avg_class_f1 = None
 
+        self.avg_class_and_detection_f1 = None
+
     def get_avg_class_f1(self):
         return self.avg_class_f1
+    
+    def get_avg_class_and_detection_f1(self):
+        return self.avg_class_and_detection_f1
 
 
     def add(self, predictions, ground_truth):
@@ -144,6 +149,7 @@ class HierarchicalEvaluator:
         )
 
         self.avg_class_f1 = np.mean(class_[1][:6, 3])
+        self.avg_class_and_detection_f1 = np.mean(np.append(class_[1][:6, 3], detection[3]))
 
         return{ 
             "detection": {
@@ -174,47 +180,6 @@ class HierarchicalEvaluator:
     
     # this function makes it easier to print the results in a nice way
     def __str__(self):
-        # metrics = self.evaluate()
-        # output = []
-        # for level, values in metrics.items():
-        #     output.append(f"{level.capitalize()} Metrics:")
-        #     for metric, value in values.items():
-        #         output.append(f"  {metric.capitalize()}: {value:.4f}")
-        #     output.append("")
-
-        # return "\n".join(output).strip()
-
-
-        # def format_value(value, indent_level=2):
-        #     indent = " " * indent_level
-        #     if isinstance(value, (float, int)):
-        #         return f"{value:.4f}"
-        #     elif isinstance(value, (list, np.ndarray)):
-        #         return "  ".join([f"{indent}{v:.4f}" for v in np.array(value).flatten()])
-        #     else:
-        #         # String aligned left
-        #         return f"{str(value):<20}"
-
-        # def format_dict(d, indent_level=2):
-        #     lines = []
-        #     indent = " " * indent_level
-        #     for key, value in d.items():
-        #         if isinstance(value, dict):
-        #             lines.append(f"{indent}{key.capitalize()}:")
-        #             lines.extend(format_dict(value, indent_level + 2))
-        #         else:
-        #             lines.append(f"{indent}{key.capitalize()}: {format_value(value, indent_level + 2)}")
-        #     return lines
-
-        # metrics = self.evaluate()
-        # output = []
-        # for section, values in metrics.items():
-        #     output.append(f"{section.capitalize()} Metrics:")
-        #     output.extend(format_dict(values))
-        #     output.append("")
-
-        # return "\n".join(output).strip()
-
         metrics = self.evaluate()
         output = []
 

@@ -1,7 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import pandas as pd
+from sklearn.model_selection import train_test_split
+import sys
 from hierarchicalsoftmax import SoftmaxNode
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from Augment.eda_augmentation import eda_augmentation
 
 classes = ["appeal to emotion", "appeal to authority", "ad hominem", "false cause", "slippery slope", "slogans", "no fallacy"]
 
@@ -165,3 +171,146 @@ def post_process_predictions(predictions):
             processed_pred = node_id_to_index.get(pred, pred)
         processed_predictions.append(processed_pred)
     return processed_predictions
+
+def get_data(augment, htc=False):
+
+    # check if data is already split
+    if os.path.exists("../data/MM_USED_fallacy/splits/train_data.csv"):
+        print("Data already split, loading pre-split data...")
+        print("Loading pre-split data...")
+        train_data = pd.read_csv("../data/MM_USED_fallacy/splits/train_data.csv")
+        val_data = pd.read_csv("../data/MM_USED_fallacy/splits/val_data.csv")
+        test_data = pd.read_csv("../data/MM_USED_fallacy/splits/test_data.csv")
+        # print length of each split
+        print(f"Train data length: {len(train_data)}")
+        print(f"Validation data length: {len(val_data)}")
+        print(f"Test data length: {len(test_data)}")
+
+        if htc:
+            class_to_name, category_to_name, detection_to_name = get_index_dicts()
+            for split in [train_data, val_data, test_data]:
+                split.loc[split['fallacy_detection'] == 0, 'class'] = -1
+                split["class"] = split["class"].map(class_to_name)
+                split["category"] = split["category"].map(category_to_name)
+                split["fallacy_detection"] = split["fallacy_detection"].map(detection_to_name)
+                unique_classes = split["class"].unique()
+
+        # Extract lists from split dataframes
+        train_snippets = train_data["snippet"].tolist()
+        train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
+        val_snippets = val_data["snippet"].tolist()
+        val_labels = val_data[["fallacy_detection", "category", "class"]].values.tolist()
+        test_snippets = test_data["snippet"].tolist()
+        test_labels = test_data[["fallacy_detection", "category", "class"]].values.tolist()
+    else:
+        print("Loading full data and splitting...")
+        data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
+        # Split the dataframe directly 
+        train_data, temp_data = train_test_split(data, test_size=0.2, random_state=42)
+        val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
+        print(f"Train data length: {len(train_data)}")
+        print(f"Validation data length: {len(val_data)}")
+        print(f"Test data length: {len(test_data)}")
+
+        # save the csv files for the splits
+        os.makedirs("../data/MM_USED_fallacy/splits", exist_ok=True)
+        train_data.to_csv("../data/MM_USED_fallacy/splits/train_data.csv", index=False)
+        val_data.to_csv("../data/MM_USED_fallacy/splits/val_data.csv", index=False)
+        test_data.to_csv("../data/MM_USED_fallacy/splits/test_data.csv", index=False)
+
+        if htc:
+            class_to_name, category_to_name, detection_to_name = get_index_dicts()
+            for split in [train_data, val_data, test_data]:
+                split.loc[split['fallacy_detection'] == 0, 'class'] = -1
+                split["class"] = split["class"].map(class_to_name)
+                split["category"] = split["category"].map(category_to_name)
+                split["fallacy_detection"] = split["fallacy_detection"].map(detection_to_name)
+                unique_classes = split["class"].unique()
+
+        # Extract lists from split dataframes
+        train_snippets = train_data["snippet"].tolist()
+        train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
+        # (Same for val and test)
+        val_snippets = val_data["snippet"].tolist()
+        val_labels = val_data[["fallacy_detection", "category", "class"]].values.tolist()
+        test_snippets = test_data["snippet"].tolist()
+        test_labels = test_data[["fallacy_detection", "category", "class"]].values.tolist()
+
+
+    if augment == "Undersample":
+        if htc:
+            # Under-sample the "no fallacy" class in the training set (and keep train set in same format)
+            train_classes_no_fallacy = pd.DataFrame({
+                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] == 'no fallacy'],
+                "fallacy_detection": [label[0] for label in train_labels if label[0] == 'no fallacy'],
+                "category": [label[1] for label in train_labels if label[0] == 'no fallacy'],
+                "class": [label[2] for label in train_labels if label[0] == 'no fallacy']
+            })
+            # undersample the "no fallacy" class to have the same number of samples as the smallest class
+            train_classes_no_fallacy = train_classes_no_fallacy.sample(n=200, random_state=42)
+            # create a new pd that has the undersampled "no fallacy" class and the rest of the training data
+            train_data = pd.DataFrame({
+                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] != 'no fallacy'] + train_classes_no_fallacy["snippet"].tolist(),
+                "fallacy_detection": [label[0] for label in train_labels if label[0] != 'no fallacy'] + train_classes_no_fallacy["fallacy_detection"].tolist(),
+                "category": [label[1] for label in train_labels if label[0] != 'no fallacy'] + train_classes_no_fallacy["category"].tolist(),
+                "class": [label[2] for label in train_labels if label[0] != 'no fallacy'] + train_classes_no_fallacy["class"].tolist()
+            })
+            # update the train_snippets and train_labels to the new undersampled data
+            train_snippets = train_data["snippet"].tolist()
+            train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
+
+        else:
+            # Under-sample the "no fallacy" class in the training set (and keep train set in same format)
+            train_classes_no_fallacy = pd.DataFrame({
+                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] == 0],
+                "fallacy_detection": [label[0] for label in train_labels if label[0] == 0],
+                "category": [label[1] for label in train_labels if label[0] == 0],
+                "class": [label[2] for label in train_labels if label[0] == 0]
+            })
+            # undersample the "no fallacy" class to have the same number of samples as the smallest class
+            train_classes_no_fallacy = train_classes_no_fallacy.sample(n=200, random_state=42)
+            # create a new pd that has the undersampled "no fallacy" class and the rest of the training data
+            train_data = pd.DataFrame({
+                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] != 0] + train_classes_no_fallacy["snippet"].tolist(),
+                "fallacy_detection": [label[0] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["fallacy_detection"].tolist(),
+                "category": [label[1] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["category"].tolist(),
+                "class": [label[2] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["class"].tolist()
+            })
+            # update the train_snippets and train_labels to the new undersampled data
+            train_snippets = train_data["snippet"].tolist()
+            train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
+
+    if augment == "EDA":
+        train_data = pd.DataFrame({
+            "snippet": train_snippets,
+            "fallacy_detection": [label[0] for label in train_labels],
+            "category": [label[1] for label in train_labels],
+            "class": [label[2] for label in train_labels]
+        })
+
+
+        augmented_train_data = eda_augmentation(train_data)
+
+        # plot_fallacy_detection_distribution(augmented_train_data, augmented=True)
+        # plot_category_distribution(augmented_train_data, augmented=True)
+        # plot_class_distribution(augmented_train_data, augmented=True)
+
+        train_snippets = augmented_train_data["snippet"].tolist()
+        train_labels = augmented_train_data[["fallacy_detection", "category", "class"]].values.tolist()
+
+    if augment == "LLM":
+        llm_aug_data = pd.read_csv("../data/MM_USED_fallacy/augmented_data_zephyr_7b_beta_only_cleaned.csv")
+
+        # Extract snippets and labels from augmented data
+        aug_snippets = llm_aug_data["snippet"].tolist()
+        aug_labels = llm_aug_data[["fallacy_detection", "category", "class"]].values.tolist()
+    
+        # Add augmented data to training data
+        train_snippets.extend(aug_snippets)
+        train_labels.extend(aug_labels)
+    
+
+    if htc:
+        return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes
+    else:
+        return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels

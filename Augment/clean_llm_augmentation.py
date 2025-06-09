@@ -20,8 +20,7 @@ def get_input_phrases():
 
 def main(input_file="full_data_processed.csv"):
     data = pd.read_csv(input_file)
-    # only copy the rows up to AUG_START_IDX
-    data_copy = data.copy().iloc[:AUG_START_IDX].reset_index(drop=True)
+    cleaned_data = pd.DataFrame(columns=["id", "snippet", "fallacy_detection", "category", "class"])
 
     input_phrases = get_input_phrases()
 
@@ -45,7 +44,7 @@ def main(input_file="full_data_processed.csv"):
                     break
             else: # If no alphabet characters are found, skip the sentence
                 continue
-            
+
             # Check if the sentence contains any of the input phrases
             input_phrase_in_sentence = False
             for phrase in input_phrases:
@@ -53,14 +52,13 @@ def main(input_file="full_data_processed.csv"):
                     input_phrase_in_sentence = True
                     break
             if input_phrase_in_sentence == False: # If none of the input phrases are in the sentence then its good
-                # Add the sentence to the data_copy
-                new_row = [len(data_copy) + 1, sentence, row['fallacy_detection'], row['category'], row['class']]
-                data_copy.loc[len(data_copy)] = new_row
+                new_row = [len(cleaned_data) + 1, sentence, row['fallacy_detection'], row['category'], row['class']]
+                cleaned_data.loc[len(cleaned_data)] = new_row
                 break
 
     # Save the cleaned data to a new CSV file
-    output_file = input_file.replace(".csv", "_cleaned.csv")
-    data_copy.to_csv(output_file, index=False)
+    output_file = input_file.replace(".csv", "_only_cleaned.csv")
+    cleaned_data.to_csv(output_file, index=False)
         
 
 

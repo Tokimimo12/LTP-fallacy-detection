@@ -2,20 +2,17 @@ import sys
 import os
 import torch
 import torch.nn as nn
-from sklearn.model_selection import train_test_split
 import pandas as pd
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm  
 import nltk 
-import pickle
+import csv
 from hierarchicalsoftmax import HierarchicalSoftmaxLoss
 
 from model import get_model, get_tokenizer, HTCModel
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from Augment.eda_augmentation import eda_augmentation
 from data.MM_USED_fallacy.MM_Dataset import MM_Dataset, HTC_MM_Dataset
-from data.MM_USED_fallacy.data_analysis import plot_fallacy_detection_distribution, plot_category_distribution, plot_class_distribution
 from Evaluation.HierarchicalEvaluator import HierarchicalEvaluator
 from Utils.utils import *
 
@@ -56,7 +53,7 @@ def get_loss_function(device, loss_weights, head_type="MTL 6"):
 
 
 
-def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, num_epochs=20, head_type="MTL 6", htc=False):
+def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, num_epochs=20, head_type="MTL 6", htc=False, augment=None):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     model = get_model(device, model_name=bert_model_name, head_type=head_type, htc=htc, root=get_tree() if htc else None)
@@ -67,12 +64,15 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, nu
         loss_criterion = get_loss_function(device, loss_weights, head_type=head_type)
 
     # Early stopping parameters
-    best_val_loss = float('inf')
-    patience = 10
+    best_val_f1 = 0
+    patience = 5
     patience_counter = 0
+    best_evaluator_metrics = None
 
     train_losses = []
     val_losses = []
+    avg_val_class_f1s = []
+    avg_val_class_and_detection_f1s = []
 
     print(f"Using device: {device}")
     for epoch in range(num_epochs):
@@ -132,15 +132,24 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, nu
             "group": loss_criterion[1] if head_type in ["MTL 6", "MTL 2"] else None,
             "classify": loss_criterion[2] if head_type in ["MTL 6", "MTL 2"] else loss_criterion
         }
-        val_loss, avg_class_f1 = validate(model, val_loader, criterions, tokenizer, device, head_type, htc=htc)
+        val_loss, evaluator_metrics, avg_class_f1, avg_class_and_detection_f1 = validate(model, val_loader, criterions, tokenizer, device, head_type, htc=htc)
         val_losses.append(val_loss)
+        avg_val_class_f1s.append(avg_class_f1)
+        avg_val_class_and_detection_f1s.append(avg_class_and_detection_f1)
         print(f"→ Validation Loss: {val_loss:.4f}\n{'-'*50}")
 
         # Check if this is the best model so far
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        if avg_class_and_detection_f1 > best_val_f1:
+            best_val_f1 = avg_class_and_detection_f1
             patience_counter = 0
-            print(f"New best model saved with validation loss: {best_val_loss:.4f}")
+            best_evaluator_metrics = evaluator_metrics
+
+            # Save the best model
+            save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Models'))
+            model_save_path = os.path.join(save_dir, bert_model_name + "_" + ("HTC" if htc else head_type) + "_Augmentation:" + augment + "_best.pth")
+            torch.save(model.state_dict(), model_save_path)
+
+            print(f"New best model saved, with average class and detection F1: {best_val_f1:.4f}")
         else:
             patience_counter += 1
             print(f"Validation loss did not improve. Patience: {patience_counter}/{patience}")
@@ -155,8 +164,22 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, nu
     # save the model
     save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Models'))
     os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, bert_model_name + "_htc" if htc else None + "_mtl" if mtl else None + ".pth")
+    model_file_name = bert_model_name + "_" + ("HTC" if htc else head_type) + "_Augmentation:" + augment
+    save_path = os.path.join(save_dir, model_file_name + "_final.pth")
     torch.save(model.state_dict(), save_path)
+
+    # Save metrics to csv
+    csv_save_path = os.path.join(save_dir, model_file_name + '_metrics.csv')
+    with open(csv_save_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Train Loss', 'Val Loss', 'Avg Val Class F1', 'Avg Val Class & Detection F1'])
+        for t_loss, v_loss, v_class_f1, v_all_f1 in zip(train_losses, val_losses, avg_val_class_f1s, avg_val_class_and_detection_f1s):
+            writer.writerow([t_loss, v_loss, v_class_f1, v_all_f1])
+
+    # Save best evalutor output to txt
+    txt_save_path = os.path.join(save_dir, model_file_name + '_best_evaluator.txt')
+    with open(txt_save_path, 'w') as file:
+        file.write(str(best_evaluator_metrics))
 
 
 
@@ -240,10 +263,12 @@ def validate(model, val_loader, criterions, tokenizer, device, head_type, htc=Fa
     avg_loss = total_loss / count if count > 0 else 0
 
     print("\nValidation Metrics:")
+    evaluator_metrics = str(evaluator)
     print(evaluator)
     avg_class_f1 = evaluator.get_avg_class_f1()
+    avg_class_and_detection_f1 = evaluator.get_avg_class_and_detection_f1()
 
-    return avg_loss, avg_class_f1
+    return avg_loss, evaluator_metrics, avg_class_f1, avg_class_and_detection_f1
 
 def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, batch_size = 8, head_type = "MTL 6", htc=False, root=None, data_labels= None):
     if htc:
@@ -263,153 +288,23 @@ def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_s
     return train_loader, val_loader, test_loader
 
 
-def get_data(augment, htc=False, under_sample_non_fallacy = False):
-
-    # check if data is already split
-    if os.path.exists("../data/MM_USED_fallacy/splits/train_data.csv"):
-        print("Data already split, loading pre-split data...")
-        print("Loading pre-split data...")
-        train_data = pd.read_csv("../data/MM_USED_fallacy/splits/train_data.csv")
-        val_data = pd.read_csv("../data/MM_USED_fallacy/splits/val_data.csv")
-        test_data = pd.read_csv("../data/MM_USED_fallacy/splits/test_data.csv")
-        # print length of each split
-        print(f"Train data length: {len(train_data)}")
-        print(f"Validation data length: {len(val_data)}")
-        print(f"Test data length: {len(test_data)}")
-
-        if htc:
-            class_to_name, category_to_name, detection_to_name = get_index_dicts()
-            for split in [train_data, val_data, test_data]:
-                split.loc[split['fallacy_detection'] == 0, 'class'] = -1
-                split["class"] = split["class"].map(class_to_name)
-                split["category"] = split["category"].map(category_to_name)
-                split["fallacy_detection"] = split["fallacy_detection"].map(detection_to_name)
-                unique_classes = split["class"].unique()
-
-        # Extract lists from split dataframes
-        train_snippets = train_data["snippet"].tolist()
-        train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
-        val_snippets = val_data["snippet"].tolist()
-        val_labels = val_data[["fallacy_detection", "category", "class"]].values.tolist()
-        test_snippets = test_data["snippet"].tolist()
-        test_labels = test_data[["fallacy_detection", "category", "class"]].values.tolist()
-    else:
-        print("Loading full data and splitting...")
-        data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
-        # Split the dataframe directly 
-        train_data, temp_data = train_test_split(data, test_size=0.2, random_state=42)
-        val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
-        print(f"Train data length: {len(train_data)}")
-        print(f"Validation data length: {len(val_data)}")
-        print(f"Test data length: {len(test_data)}")
-
-        # save the csv files for the splits
-        os.makedirs("../data/MM_USED_fallacy/splits", exist_ok=True)
-        train_data.to_csv("../data/MM_USED_fallacy/splits/train_data.csv", index=False)
-        val_data.to_csv("../data/MM_USED_fallacy/splits/val_data.csv", index=False)
-        test_data.to_csv("../data/MM_USED_fallacy/splits/test_data.csv", index=False)
-
-        if htc:
-            class_to_name, category_to_name, detection_to_name = get_index_dicts()
-            for split in [train_data, val_data, test_data]:
-                split.loc[split['fallacy_detection'] == 0, 'class'] = -1
-                split["class"] = split["class"].map(class_to_name)
-                split["category"] = split["category"].map(category_to_name)
-                split["fallacy_detection"] = split["fallacy_detection"].map(detection_to_name)
-                unique_classes = split["class"].unique()
-
-        # Extract lists from split dataframes
-        train_snippets = train_data["snippet"].tolist()
-        train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
-        # (Same for val and test)
-        val_snippets = val_data["snippet"].tolist()
-        val_labels = val_data[["fallacy_detection", "category", "class"]].values.tolist()
-        test_snippets = test_data["snippet"].tolist()
-        test_labels = test_data[["fallacy_detection", "category", "class"]].values.tolist()
-
-
-    if under_sample_non_fallacy:
-        if htc:
-            # Under-sample the "no fallacy" class in the training set (and keep train set in same format)
-            train_classes_no_fallacy = pd.DataFrame({
-                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] == 'no fallacy'],
-                "fallacy_detection": [label[0] for label in train_labels if label[0] == 'no fallacy'],
-                "category": [label[1] for label in train_labels if label[0] == 'no fallacy'],
-                "class": [label[2] for label in train_labels if label[0] == 'no fallacy']
-            })
-            # undersample the "no fallacy" class to have the same number of samples as the smallest class
-            train_classes_no_fallacy = train_classes_no_fallacy.sample(n=200, random_state=42)
-            # create a new pd that has the undersampled "no fallacy" class and the rest of the training data
-            train_data = pd.DataFrame({
-                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] != 'no fallacy'] + train_classes_no_fallacy["snippet"].tolist(),
-                "fallacy_detection": [label[0] for label in train_labels if label[0] != 'no fallacy'] + train_classes_no_fallacy["fallacy_detection"].tolist(),
-                "category": [label[1] for label in train_labels if label[0] != 'no fallacy'] + train_classes_no_fallacy["category"].tolist(),
-                "class": [label[2] for label in train_labels if label[0] != 'no fallacy'] + train_classes_no_fallacy["class"].tolist()
-            })
-            # update the train_snippets and train_labels to the new undersampled data
-            train_snippets = train_data["snippet"].tolist()
-            train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
-
-        else:
-            # Under-sample the "no fallacy" class in the training set (and keep train set in same format)
-            train_classes_no_fallacy = pd.DataFrame({
-                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] == 0],
-                "fallacy_detection": [label[0] for label in train_labels if label[0] == 0],
-                "category": [label[1] for label in train_labels if label[0] == 0],
-                "class": [label[2] for label in train_labels if label[0] == 0]
-            })
-            # undersample the "no fallacy" class to have the same number of samples as the smallest class
-            train_classes_no_fallacy = train_classes_no_fallacy.sample(n=200, random_state=42)
-            # create a new pd that has the undersampled "no fallacy" class and the rest of the training data
-            train_data = pd.DataFrame({
-                "snippet": [snippet for snippet, label in zip(train_snippets, train_labels) if label[0] != 0] + train_classes_no_fallacy["snippet"].tolist(),
-                "fallacy_detection": [label[0] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["fallacy_detection"].tolist(),
-                "category": [label[1] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["category"].tolist(),
-                "class": [label[2] for label in train_labels if label[0] != 0] + train_classes_no_fallacy["class"].tolist()
-            })
-            # update the train_snippets and train_labels to the new undersampled data
-            train_snippets = train_data["snippet"].tolist()
-            train_labels = train_data[["fallacy_detection", "category", "class"]].values.tolist()
-
-    if augment:
-        train_data = pd.DataFrame({
-            "snippet": train_snippets,
-            "fallacy_detection": [label[0] for label in train_labels],
-            "category": [label[1] for label in train_labels],
-            "class": [label[2] for label in train_labels]
-        })
-
-
-        augmented_train_data = eda_augmentation(train_data)
-
-        plot_fallacy_detection_distribution(augmented_train_data, augmented=True)
-        plot_category_distribution(augmented_train_data, augmented=True)
-        plot_class_distribution(augmented_train_data, augmented=True)
-
-        train_snippets = augmented_train_data["snippet"].tolist()
-        train_labels = augmented_train_data[["fallacy_detection", "category", "class"]].values.tolist()
-
-    if htc:
-        return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes
-    else:
-        return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels
-
-
-def train_model(bert_model_name = "DistilBert", head_type="MTL 6", augment=True, num_epochs=5, batch_size=8, htc=False):
+def train_model(bert_model_name = "DistilBert", head_type="MTL 6", augment="None", num_epochs=5, batch_size=8):
     # Load data
-    if htc:
-            train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes = get_data(augment=augment, htc=htc, under_sample_non_fallacy = True)
-            root = get_tree()
-            loss_weights = None
+    htc = False
+    if head_type == "HTC":
+        htc = True
+        head_type = "STL" # Change model head type to STL since HTC was just a placeholder till here
+        train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes = get_data(augment=augment, htc=True)
+        root = get_tree()
+        loss_weights = None
     else:
-        train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels = get_data(augment=augment, under_sample_non_fallacy = True)
-
+        train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels = get_data(augment=augment)
         loss_weights = get_loss_class_weighting(train_labels, head_type=head_type)
     
-    
-    
+    # Get tokenizer
     tokenizer = get_tokenizer(model_name=bert_model_name)
 
+    # Get dataloaders
     train_loader, val_loader, test_loader = load_datasets(
         train_snippets, train_labels, 
         val_snippets, val_labels, 
@@ -420,25 +315,21 @@ def train_model(bert_model_name = "DistilBert", head_type="MTL 6", augment=True,
         data_labels=unique_classes if htc else None,
         root=root if htc else None
     )
-    train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, num_epochs=num_epochs, head_type=head_type, htc=htc)
+
+    train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, num_epochs=num_epochs, head_type=head_type, htc=htc, augment=augment)
 
 if __name__ == "__main__":
     # Example usage
-    head_type = "MTL 6"  # Set to "STL" for single task and "MTL 2" for 2 classes in final layer
-    augment = False  # Set to False if you don't want to use EDA augmentation
-    mtl = False  # Set to False for single-task learning
+    head_type = "MTL 6"  # Set to "STL" for single task, "MTL 2" for 2 classes in final layer, and "HTC" for hierarchical softmax
+    augment = "LLM"  # Set to "None" for no augmentation, "EDA" for EDA augmentation or "LLM" for LLM generated augmentation, "LLM+EDA" for both, and "Undersample" to undersample non-fallacy
     num_epochs = 20  # Adjust as needed
     batch_size = 32  # Adjust as needed
-    htc=True
 
-    for head_type in ["MTL 6", "MTL 2", "STL"]:
-        if head_type != "STL":
-            print("skipping MTL 2 and MTL 6 for now")
-            continue
-        print("Prediction Head Type: ", head_type)
-        for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
-            print(f"################ Training with {bert_model_name} model...")
-            train_model(bert_model_name, head_type=head_type, augment=augment, num_epochs=num_epochs, batch_size=batch_size, htc=htc)
-        if htc:
-            break
+    for head_type in ["MTL 6", "HTC", "STL"]:
+        for augment in ["None", "EDA", "LLM", "Undersample"]:
+            print("Prediction Head Type: ", head_type, "Augmentation Type:", augment)
+            for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
+                print(f"################ Training with {bert_model_name} model...")
+                train_model(bert_model_name, head_type=head_type, augment=augment, num_epochs=num_epochs, batch_size=batch_size)
+
     

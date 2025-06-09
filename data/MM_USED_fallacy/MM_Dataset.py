@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset
-from Model.HTC_utils import get_tree_dicts, get_reverse_dicts
+from Utils.utils import get_tree_dicts, get_reverse_dicts
 
 class MM_Dataset(Dataset):
     def __init__(self, snippets, labels, head_type="MTL 6"):
