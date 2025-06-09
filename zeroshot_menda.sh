@@ -4,7 +4,7 @@
 #SBATCH --nodes=1                     # Number of nodes (use 1 node)
 #SBATCH --ntasks=1                    # One task
 #SBATCH --gpus-per-node=v100:1
-#SBATCH --time=00:05:00              # Time limit for the job
+#SBATCH --time=0:05:00              # Time limit for the job
 #SBATCH --mem=10GB
 
 # Remove all previously loaded modules
@@ -33,7 +33,7 @@ cd $TMPDIR/LTP-fallacy-detection/prompting
 
 # Run training with parameter file
 echo "About to run Python script at $(date)"
-python3 -u new_prompting.py --mode zeroshot --model menda
+python3 -u new_prompting.py --mode zero-shot --model menda
 
 ############ SAVING RESULTS
 # Save results to permanent storage

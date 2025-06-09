@@ -14,12 +14,6 @@ import argparse
 
 random.seed(4)
 
-def prompt_zeroshot_hierarchical(text: str) -> str:
-    pass
-
-def prompt_oneshot_hierarchical(text: str) -> str:
-    pass
-
 def prompt_zeroshot(text:str) -> str:
     _, category_labels, class_labels = get_possible_outputs()
     messages = [
@@ -27,7 +21,7 @@ def prompt_zeroshot(text:str) -> str:
         {"role": "user", "content": f"Text: {text}"},
         {"role": "user", "content": "1. Is the text fallacious? Only answer with 'yes' or 'no'."},
         {"role": "user", "content": f"2. What category of fallacy is it? You only have to answer with one of the following labels: {category_labels}, or ['None'] if it is not fallacious."},
-        {"role": "user", "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels or other labels you see fit: {class_labels}, or ['None'] if it is not fallacious."},
+        {"role": "user", "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
     ]
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
