@@ -31,6 +31,11 @@ echo "Finished copying at $(date)"
 ############ RUN CODE
 cd $TMPDIR/LTP-fallacy-detection/prompting
 
+# Set HuggingFace cache to TMPDIR which should have more space
+export HF_HOME=$TMPDIR/huggingface
+export TRANSFORMERS_CACHE=$TMPDIR/huggingface/transformers
+mkdir -p $HF_HOME
+
 # export token
 export HF_TOKEN="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"
 
