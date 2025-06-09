@@ -3,6 +3,7 @@ import random
 import logging
 from retry import retry
 from transformers import pipeline, AutoConfig
+from transformers import AutoTokenizer
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 import sys
@@ -10,9 +11,36 @@ import pandas as pd
 import os
 from utils import get_possible_outputs
 
+from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
+
 import argparse
 
 random.seed(4)
+
+class FallacyDataset(Dataset):
+    def __init__(self, data, mode="zero-shot"):
+        self.data = data
+        self.mode = mode
+        
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        row = self.data.iloc[idx]
+        if self.mode == "zero-shot":
+            prompt = prompt_zeroshot(row['snippet'])
+        else:
+            prompt = prompt_oneshot(row['snippet'])
+        
+        return {
+            'index': row['ID'],
+            'statement': row['snippet'],
+            'prompt': prompt,
+            'gt_detection': row['fallacy_detection'],
+            'gt_category': row['category'],
+            'gt_class': row['class']
+        }
 
 def prompt_zeroshot(text:str) -> str:
     _, category_labels, class_labels = get_possible_outputs()
@@ -26,7 +54,6 @@ def prompt_zeroshot(text:str) -> str:
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
     prompt += "\nAssistant:\n"  # hint model it's time to respond
-
     return prompt
 
 def prompt_oneshot(text:str) -> str:
@@ -55,8 +82,7 @@ def prompt_oneshot(text:str) -> str:
     ]
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
-    prompt += "\nAssistant:\n"  # hint model it's time to respond
-
+    prompt += "\nAssistant:\n"  # hint model it's time to respon
     return prompt
 
 def extract_answers(answer: str) -> tuple:
@@ -100,6 +126,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process statements with a language model.")
     parser.add_argument("--mode", type=str, choices=["zero-shot", "one-shot"], default="zero-shot", help="Mode of prompting: zero-shot or one-shot.")
     parser.add_argument("--model", type=str, default="mistralai", help="Model to use for generation.")
+    parser.add_argument("--batch_size", type=int, default=32, help="Batch size for processing statements.")
     args = parser.parse_args()
     MODE = args.mode
     print(f"Running in {MODE} mode.")
@@ -136,49 +163,53 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Still having issues: {e}")
 
+    # Load tokenizer and set padding to left
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.padding_side = 'left'
+
 
     generator = pipeline(
         "text-generation",
         model=model_name,
+        tokenizer=tokenizer,
         model_kwargs={"torch_dtype": "auto"},
         device_map="auto",
     )
     #print which device the model is on
     print(f"Model is loaded on device: {generator.device}")
 
-    # loop through the data
-    for index, row in data.iterrows():
-        print(f"Processing row {index + 1}/{len(data)}: {row['ID']}")
-        index_ID = row['ID']
-        counter += 1
+    # Create dataset and dataloader
+    dataset = FallacyDataset(data, mode=MODE)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
+    
+    # For collecting results
+    all_results = []
 
-        indices.append(index_ID)
-        statements.append(row['snippet'])
-        gt_detection.append(row['fallacy_detection'])
-        gt_categories.append(row['category'])
-        gt_classes.append(row['class'])
-
-        snippet = row['snippet']
-        detection = row['fallacy_detection']
-        category = row['category']
-        specific_type = row['class']
-
-        answer = process_statements([snippet], generator, MODE)
-
-        pred_detection.append(answer[0]['fallacious'])
-        pred_categories.append(answer[0]['category'])
-        pred_classes.append(answer[0]['specific_type'])
-
-    # Save the results to a CSV file
-    results_df = pd.DataFrame({
-        'index': indices,
-        'statement': statements,
-        'pred_detection': pred_detection,
-        'pred_categories': pred_categories,
-        'pred_classes': pred_classes,
-        'gt_detection': gt_detection,
-        'gt_categories': gt_categories,
-        'gt_classes': gt_classes
-    })	    
+    # Process in batches
+    for batch in tqdm(dataloader, desc="Processing batches"):
+        # Generate outputs for the batch
+        outputs = generator(
+            batch['prompt'], 
+            max_new_tokens=128,
+            batch_size=len(batch['prompt'])
+        )
+        
+        # Process each result
+        for i, output in enumerate(outputs):
+            output = output[0]['generated_text']
+            fallacious, category, specific_type = extract_answers(output)
+            all_results.append({
+                'index': batch['index'][i],
+                'statement': batch['statement'][i],
+                'pred_detection': fallacious,
+                'pred_categories': category,
+                'pred_classes': specific_type,
+                'gt_detection': batch['gt_detection'][i],
+                'gt_categories': batch['gt_category'][i],
+                'gt_classes': batch['gt_class'][i]
+            })
+    
+    # Convert results to DataFrame
+    results_df = pd.DataFrame(all_results)
     results_df.to_csv(os.path.join('results', f"{MODE}_{args.model}.csv"), index=False)
     
