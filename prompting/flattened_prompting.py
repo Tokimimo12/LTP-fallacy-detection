@@ -49,7 +49,7 @@ def prompt_zeroshot(text:str) -> str:
             "content": "Your task is to simply and promptly give bare answer the next question. The answer needs to be in the following format: <Fallacy Type>.\n Do not generate anything beyond this line. Do not explain or continue after the first line."},
         {"role": "user", "content": "Now it's your turn:"},
         {"role": "user", "content": f"Text: {text}"},
-        {"role": "user", "content": "1. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
+        {"role": "user", "content": f"1. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
     ]
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
     prompt += "\nAssistant:\n"  # hint model it's time to respond
@@ -71,7 +71,7 @@ def prompt_oneshot(text:str) -> str:
         {"role": "user", "content": example},
         {"role": "user", "content": "Now it's your turn:"},
         {"role": "user", "content": f"Text: {text}"},
-        {"role": "user", "content": "1. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
+        {"role": "user", "content": f"1. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
     ]
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
