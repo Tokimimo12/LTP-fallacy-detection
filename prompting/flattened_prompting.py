@@ -158,16 +158,6 @@ if __name__ == "__main__":
     }
 
     data = pd.read_csv("../data/MM_USED_fallacy/splits/test_data.csv")
-
-    indices = []
-    statements = []
-    pred_detection = []
-    pred_categories = []
-    pred_classes = []
-    gt_detection = []
-    gt_categories = []
-    gt_classes = []
-    counter = 0
     
     model_name = generation_models[args.model]
     print(f"Using model: {model_name}")
