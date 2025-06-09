@@ -4,7 +4,7 @@
 #SBATCH --nodes=1                     # Number of nodes (use 1 node)
 #SBATCH --ntasks=1                    # One task
 #SBATCH --gpus-per-node=v100:1
-#SBATCH --time=0:05:00              # Time limit for the job
+#SBATCH --time=05:00:00              # Time limit for the job
 #SBATCH --mem=10GB
 
 # Remove all previously loaded modules
@@ -31,9 +31,19 @@ echo "Finished copying at $(date)"
 ############ RUN CODE
 cd $TMPDIR/LTP-fallacy-detection/prompting
 
+# export token
+export HF_TOKEN="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"
+
+huggingface-cli login --token $HF_TOKEN
+
 # Run training with parameter file
 echo "About to run Python script at $(date)"
+python3 -u new_prompting.py --mode zero-shot --model llama
+python3 -u new_prompting.py --mode zero-shot --model llama-instruct
 python3 -u new_prompting.py --mode zero-shot --model menda
+python3 -u new_prompting.py --mode zero-shot --model phi-4
+python3 -u new_prompting.py --mode zero-shot --model mistralai
+python3 -u new_prompting.py --mode zero-shot --model tinyllama
 
 ############ SAVING RESULTS
 # Save results to permanent storage
