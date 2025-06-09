@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=oneshot_menda        # Job name
-#SBATCH --output=oneshot_menda-%j.log
+#SBATCH --job-name=oneshot_flat        # Job name
+#SBATCH --output=oneshot_flat-%j.log
 #SBATCH --nodes=1                     # Number of nodes (use 1 node)
 #SBATCH --ntasks=1                    # One task
 #SBATCH --gpus-per-node=v100:1

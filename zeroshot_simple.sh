@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=zeroshot_menda        # Job name
-#SBATCH --output=zeroshot_menda-%j.log
+#SBATCH --job-name=zeroshot_simple       # Job name
+#SBATCH --output=zeroshot_simple-%j.log
 #SBATCH --nodes=1                     # Number of nodes (use 1 node)
 #SBATCH --ntasks=1                    # One task
 #SBATCH --gpus-per-node=v100:1
