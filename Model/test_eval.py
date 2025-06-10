@@ -101,6 +101,7 @@ def eval(test_loader, bert_model_name, tokenizer, head_type="MTL 6", htc=False, 
     print(evaluator)
     avg_class_f1 = evaluator.get_avg_class_f1()
     avg_class_and_detection_f1 = evaluator.get_avg_class_and_detection_f1()
+    rev_precision, rev_recall, rev_f1 = evaluator.compute_reversed_f1_for_class_6()
 
     # Save metrics to csv
     save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'Saved_Test_Metrics'))
@@ -108,8 +109,8 @@ def eval(test_loader, bert_model_name, tokenizer, head_type="MTL 6", htc=False, 
     csv_save_path = os.path.join(save_dir, model_file_name + '_test_metrics.csv')
     with open(csv_save_path, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Avg Test Class F1', 'Avg Test Class & Detection F1'])
-        writer.writerow([avg_class_f1, avg_class_and_detection_f1])
+        writer.writerow(['Avg Test Class F1', 'Avg Test Class & Detection F1', 'Reversed Precision', 'Reversed Recall', 'Reversed F1'])
+        writer.writerow([avg_class_f1, avg_class_and_detection_f1, rev_precision, rev_recall, rev_f1])
 
     # Save best evalutor output to txt
     txt_save_path = os.path.join(save_dir, model_file_name + '_test_evaluator.txt')

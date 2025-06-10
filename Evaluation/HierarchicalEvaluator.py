@@ -34,6 +34,20 @@ class HierarchicalEvaluator:
     
     def get_avg_class_and_detection_f1(self):
         return self.avg_class_and_detection_f1
+    
+    def compute_reversed_f1_for_class_6(self):
+        i = 6  # index for class 6 (no fallacy)
+
+        # Treat all other classes (0–5) as positive
+        rev_tp = np.sum(self.class_tp[:i])  # all true positives for fallacy classes
+        rev_fp = np.sum(self.class_fn[:i])  # false negatives for fallacy classes become FP
+        rev_fn = np.sum(self.class_fp[:i])  # false positives for fallacy classes become FN
+
+        rev_precision = rev_tp / (rev_tp + rev_fp) if (rev_tp + rev_fp) else 0
+        rev_recall = rev_tp / (rev_tp + rev_fn) if (rev_tp + rev_fn) else 0
+        rev_f1 = (2 * rev_precision * rev_recall) / (rev_precision + rev_recall) if (rev_precision + rev_recall) else 0
+
+        return rev_precision, rev_recall, rev_f1
 
 
     def add(self, predictions, ground_truth):
@@ -86,14 +100,6 @@ class HierarchicalEvaluator:
                     self.class_fp[class_pred] += 1
                     self.class_fn[class_gt] += 1
             else: # detection or category is wrong
-                self.class_fp[class_pred] += 1
-                self.class_fn[class_gt] += 1
-        elif self.head_type == "STL":
-            self.class_total[class_gt] += 1
-            if class_pred == class_gt:
-                self.class_correct[class_gt] += 1
-                self.class_tp[class_gt] += 1
-            else:
                 self.class_fp[class_pred] += 1
                 self.class_fn[class_gt] += 1
 
