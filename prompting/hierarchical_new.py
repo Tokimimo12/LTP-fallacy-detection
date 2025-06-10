@@ -263,7 +263,8 @@ if __name__ == "__main__":
 
             # Convert results to DataFrame after each level
             results_df = pd.DataFrame(all_results)
-            print(results_df.head())
+            # print length of results_df
+            print(f"Results after {level} level: {len(results_df)} examples")
             
             # Save complete results after each level
             results_df.to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}.csv"), index=False)
