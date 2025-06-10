@@ -45,7 +45,7 @@ echo "About to run Python script at $(date)"
 python3 -u new_prompting_fixed.py --mode zero-shot --model llama
 python3 -u new_prompting_fixed.py --mode zero-shot --model llama-instruct
 python3 -u new_prompting_fixed.py --mode zero-shot --model menda
-python3 -u new_prompting_fixed.py --mode zero-shot --model phi-4 --batch_size 4
+# python3 -u new_prompting_fixed.py --mode zero-shot --model phi-4 --batch_size 4
 python3 -u new_prompting_fixed.py --mode zero-shot --model mistralai
 python3 -u new_prompting_fixed.py --mode zero-shot --model tinyllama
 
