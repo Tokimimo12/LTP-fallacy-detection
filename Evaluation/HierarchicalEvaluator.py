@@ -162,7 +162,7 @@ class HierarchicalEvaluator:
         if self.head_type == "MTL 6":
             self.avg_class_and_detection_f1 = np.mean(np.append(class_[1][:6, 3], detection[3]))
         elif self.head_type == "STL":
-            self.avg_class_and_detection_f1 = np.mean(np.append(class_[1][3]))
+            self.avg_class_and_detection_f1 = np.mean((class_[1][3]))
 
         return{ 
             "detection": {
