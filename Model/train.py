@@ -325,7 +325,7 @@ if __name__ == "__main__":
     num_epochs = 20  # Adjust as needed
     batch_size = 32  # Adjust as needed
 
-    for head_type in ["MTL 6", "HTC", "STL"]:
+    for head_type in ["HTC"]:
         for augment in ["None", "EDA", "LLM", "Undersample"]:
             print("Prediction Head Type: ", head_type, "Augmentation Type:", augment)
             for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
