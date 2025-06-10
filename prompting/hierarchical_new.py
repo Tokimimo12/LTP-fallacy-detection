@@ -4,6 +4,7 @@ import logging
 from retry import retry
 from transformers import pipeline, AutoConfig
 from transformers import AutoTokenizer
+import string
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 import sys
@@ -98,7 +99,7 @@ def extract_answers(answer: str) -> tuple:
     
     lines = answer.strip().splitlines()
     class_to_category = get_class_to_category()
-    return answer
+    print(f"Extracting answers from: {lines}")
     
     try:
         # Find the index of the assistant's response
@@ -106,6 +107,10 @@ def extract_answers(answer: str) -> tuple:
         
         # Get the line after "Assistant:"
         response_line = lines[assistant_index + 1].strip()
+        print(f"Response line: {response_line}")
+
+        # remove all punctuation
+        response_line = response_line.translate(str.maketrans('', '', string.punctuation))
 
         # remove "<"
         if response_line.startswith("<") and response_line.endswith(">"):
@@ -198,6 +203,10 @@ if __name__ == "__main__":
                 data = data[data['pred_detection'].str.lower() == 'yes']
                 print(f"Filtered to {len(data)} fallacious examples for category level")
             if level == "class":
+                # check if pred_categories exists, if not, skip 
+                if 'pred_categories' not in data.columns:
+                    print("No pred_categories found in data, skipping class level processing.")
+                    continue
                 # For class level, we need to filter by category
                 data = data[data['pred_categories'].isin(possible_classes_per_category.keys())]
                 print(f"Filtered to {len(data)} examples for class level")
