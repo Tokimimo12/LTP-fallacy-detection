@@ -9,7 +9,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 import sys
 import pandas as pd
 import os
-from utils import get_possible_outputs
+from utils import get_possible_outputs, get_possible_classes_per_category
 
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
@@ -58,6 +58,7 @@ class FallacyDataset(Dataset):
 
 def get_prompt(text, mode, level, previous_answer):
     _, category_labels, class_labels = get_possible_outputs()
+    possible_classes_per_category = get_possible_classes_per_category()
 
     if level == "detection":
         answer_template = "<Yes/No>"
@@ -85,7 +86,7 @@ def get_prompt(text, mode, level, previous_answer):
 
     elif level == "class":
         messages.append({"role": "user", "content": f"Text: {text}"})
-        messages.append({"role": "user", "content": f"You previously indicated that this text was a fallacy of category '{previous_answer}'. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}."})
+        messages.append({"role": "user", "content": f"You previously indicated that this text was a fallacy of category '{previous_answer}'. What specific kind of fallacy is it? You only have to answer with one of the following labels: {possible_classes_per_category[previous_answer]}."})
     
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
     prompt += "\nAssistant:\n"  # hint model it's time to respon
@@ -178,6 +179,8 @@ if __name__ == "__main__":
     #print which device the model is on
     print(f"Model is loaded on device: {generator.device}")
 
+    possible_classes_per_category = get_possible_classes_per_category()
+
     for level in ["detection", "category", "class"]:
         # For collecting results
         all_results = []
@@ -191,14 +194,14 @@ if __name__ == "__main__":
             # Load results from previous level and filter out non-fallacious examples
             data = pd.read_csv(os.path.join('results', f"flattened_{MODE}_{args.model}.csv"))
             print(data.head())
-            if level == "category":
+            if level != "detection":
                 # Only keep examples detected as fallacious (yes)
                 data = data[data['pred_detection'].str.lower() == 'yes']
                 print(f"Filtered to {len(data)} fallacious examples for category level")
-            elif level == "class":
-                # Only keep examples detected as fallacious (yes)
-                data = data[data['pred_detection'].str.lower() == 'yes']
-                print(f"Filtered to {len(data)} fallacious examples for category level")
+            if level == "class":
+                # For class level, we need to filter by category
+                data = data[data['pred_categories'].isin(possible_classes_per_category.keys())]
+                print(f"Filtered to {len(data)} examples for class level")
 
         # Create dataset and dataloader
         dataset = FallacyDataset(data, mode=MODE, level=level)
@@ -275,5 +278,11 @@ if __name__ == "__main__":
     
     # Convert results to DataFrame
     results_df = pd.DataFrame(all_results)
+
+    # Convert any tensor values to Python native types
+    for column in results_df.columns:
+        if results_df[column].apply(lambda x: hasattr(x, 'item')).any():
+            results_df[column] = results_df[column].apply(lambda x: x.item() if hasattr(x, 'item') else x)
+            
     results_df.to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}.csv"), index=False)
     print(f"Results saved to {os.path.join('results', f'flattened_{MODE}_{args.model}.csv')}")
