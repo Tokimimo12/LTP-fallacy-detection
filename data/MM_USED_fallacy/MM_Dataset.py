@@ -27,7 +27,7 @@ class MM_Dataset(Dataset):
             detection_label = self.labels[idx][0]
             group_label = self.labels[idx][1]
             if detection_label == 0: # non-fallacy
-            # If it's a non-fallacy, we classify it as "non-fallacy" (6)
+                # If it's a non-fallacy, we classify it as "non-fallacy" (6)
                 classify_label = 6
             else:
                 classify_label = self.labels[idx][2]
