@@ -91,8 +91,6 @@ def get_prompt(text, mode, level, previous_answer):
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
     prompt += "\nAssistant:\n"  # hint model it's time to respon
 
-    print(prompt)
-
     return prompt
 
 def extract_answers(answer: str) -> tuple:
@@ -270,9 +268,6 @@ if __name__ == "__main__":
                 fallacious_indices = set([item['ID'] for item in all_results])
                 non_fallacious = [item for item in original_results if item['ID'] not in fallacious_indices]
                 all_results.extend(non_fallacious)
-
-            
-            break
         
                     
     
@@ -283,6 +278,6 @@ if __name__ == "__main__":
     for column in results_df.columns:
         if results_df[column].apply(lambda x: hasattr(x, 'item')).any():
             results_df[column] = results_df[column].apply(lambda x: x.item() if hasattr(x, 'item') else x)
-            
+
     results_df.to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}.csv"), index=False)
     print(f"Results saved to {os.path.join('results', f'flattened_{MODE}_{args.model}.csv')}")

@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=zeroshot_hierarchical        # Job name
-#SBATCH --output=zeroshot_hierarchical-%j.log
+#SBATCH --job-name=oneshot_hierarchical        # Job name
+#SBATCH --output=oneshot_hierarchical-%j.log
 #SBATCH --nodes=1                     # Number of nodes (use 1 node)
 #SBATCH --ntasks=1                    # One task
 #SBATCH --gpus-per-node=v100:1
@@ -42,12 +42,12 @@ huggingface-cli login --token $HF_TOKEN
 
 # Run training with parameter file
 echo "About to run Python script at $(date)"
-python3 -u hierarchical_new.py --mode zero-shot --model llama
-python3 -u hierarchical_new.py --mode zero-shot --model llama-instruct
-python3 -u hierarchical_new.py --mode zero-shot --model menda
-python3 -u hierarchical_new.py --mode zero-shot --model phi-4 --batch_size 4
-python3 -u hierarchical_new.py --mode zero-shot --model mistralai
-python3 -u hierarchical_new.py --mode zero-shot --model tinyllama
+python3 -u hierarchical_new.py --mode one-shot --model llama
+python3 -u hierarchical_new.py --mode one-shot --model llama-instruct
+python3 -u hierarchical_new.py --mode one-shot --model menda
+python3 -u hierarchical_new.py --mode one-shot --model phi-4 --batch_size 4
+python3 -u hierarchical_new.py --mode one-shot --model mistralai
+python3 -u hierarchical_new.py --mode one-shot --model tinyllama
 
 ############ SAVING RESULTS
 # Save results to permanent storage
