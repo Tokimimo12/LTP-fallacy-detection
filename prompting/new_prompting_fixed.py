@@ -56,8 +56,6 @@ def prompt_zeroshot(text:str) -> str:
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
     prompt += "\nAssistant:\n"  # hint model it's time to respond
-
-    print(prompt)
     return prompt
 
 def prompt_oneshot(text:str) -> str:
