@@ -48,3 +48,12 @@ def get_class_to_category():
         "None": "None"
     }
     return class_to_category
+
+def get_possible_classes_per_category():
+    possible_classes = {
+        "Fallacy of Emotion": ["Appeal to Emotion", "Slogans"],
+        "Fallacy of Credibility": ["Appeal to Authority", "Ad Hominem"],
+        "Fallacy of Logic": ["False Cause", "Slippery Slope"],
+        "None": ["None"]
+    }
+    return possible_classes
