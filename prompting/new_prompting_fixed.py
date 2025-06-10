@@ -198,9 +198,16 @@ if __name__ == "__main__":
                 'gt_categories': batch['gt_category'][i],
                 'gt_classes': batch['gt_class'][i]
             })
+        break
     
     # Convert results to DataFrame
     results_df = pd.DataFrame(all_results)
+
+    # Convert any tensor values to Python native types
+    for column in results_df.columns:
+        if results_df[column].apply(lambda x: hasattr(x, 'item')).any():
+            results_df[column] = results_df[column].apply(lambda x: x.item() if hasattr(x, 'item') else x)
+            
     results_df.to_csv(os.path.join('results', f"{MODE}_{args.model}.csv"), index=False)
     print(f"Results saved to {os.path.join('results', f'{MODE}_{args.model}.csv')}")
     
