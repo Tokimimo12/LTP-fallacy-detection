@@ -42,7 +42,7 @@ huggingface-cli login --token $HF_TOKEN
 
 # Run training with parameter file
 echo "About to run Python script at $(date)"
-python3 -u new_prompting.py --mode one-shot --model phi-4
+python3 -u new_prompting.py --mode one-shot --model phi-4 --batch_size 4
 
 ############ SAVING RESULTS
 # Save results to permanent storage
