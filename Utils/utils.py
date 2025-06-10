@@ -67,7 +67,7 @@ def get_loss_class_weighting(train_labels, head_type="MTL 6"):
 
     return weights
 
-def plot_losses(train_losses, val_losses, model_name, head_type, avg_class_f1):
+def plot_losses(train_losses, val_losses, model_name, head_type, avg_class_f1, augment):
     plt.figure(figsize=(8,6))
     plt.plot(range(1, len(train_losses)+1), train_losses, label='Train Loss')
     plt.plot(range(1, len(val_losses)+1), val_losses, label='Validation Loss')
@@ -80,7 +80,7 @@ def plot_losses(train_losses, val_losses, model_name, head_type, avg_class_f1):
     save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'Saved_Plots'))
     os.makedirs(save_dir, exist_ok=True)
     
-    save_path = os.path.join(save_dir, str(head_type) + "_" + str(model_name) + "_loss_plot.png")
+    save_path = os.path.join(save_dir, str(head_type) + "_" + str(model_name) + "_Aug:" + str(augment) + "_loss_plot.png")
     plt.savefig(save_path)
             
 def get_possible_outputs():

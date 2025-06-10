@@ -145,7 +145,7 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, nu
             best_evaluator_metrics = evaluator_metrics
 
             # Save the best model
-            save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Models'))
+            save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'Saved_Models'))
             model_save_path = os.path.join(save_dir, bert_model_name + "_" + ("HTC" if htc else head_type) + "_Augmentation:" + augment + "_best.pth")
             torch.save(model.state_dict(), model_save_path)
 
@@ -159,10 +159,10 @@ def train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, nu
             print(f"Early stopping triggered after {epoch + 1} epochs")
             break
 
-    plot_losses(train_losses, val_losses, bert_model_name, head_type, avg_class_f1)
+    plot_losses(train_losses, val_losses, bert_model_name, head_type, avg_class_f1, augment)
 
     # save the model
-    save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Saved_Models'))
+    save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'Saved_Models'))
     os.makedirs(save_dir, exist_ok=True)
     model_file_name = bert_model_name + "_" + ("HTC" if htc else head_type) + "_Augmentation:" + augment
     save_path = os.path.join(save_dir, model_file_name + "_final.pth")
@@ -325,7 +325,7 @@ if __name__ == "__main__":
     num_epochs = 20  # Adjust as needed
     batch_size = 32  # Adjust as needed
 
-    for head_type in ["MTL 6", "HTC", "STL"]:
+    for head_type in ["STL", "HTC", "MTL 6"]:
         for augment in ["None", "EDA", "LLM", "Undersample"]:
             print("Prediction Head Type: ", head_type, "Augmentation Type:", augment)
             for bert_model_name in ["DistilBert", "Bert", "Roberta"]:

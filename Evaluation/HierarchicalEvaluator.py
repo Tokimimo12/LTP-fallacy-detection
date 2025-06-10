@@ -42,7 +42,7 @@ class HierarchicalEvaluator:
 
         #  ------------- Detection level -------------
 
-        self.detection_total +=1
+        self.detection_total += 1
         if detection_pred == detection_gt: # Correct detection prediction
             self.detection_correct += 1
             if detection_pred:
@@ -88,6 +88,16 @@ class HierarchicalEvaluator:
             else: # detection or category is wrong
                 self.class_fp[class_pred] += 1
                 self.class_fn[class_gt] += 1
+        elif self.head_type == "STL":
+            self.class_total[class_gt] += 1
+            if class_pred == class_gt:
+                self.class_correct[class_gt] += 1
+                self.class_tp[class_gt] += 1
+            else:
+                self.class_fp[class_pred] += 1
+                self.class_fn[class_gt] += 1
+
+
         
 
 
@@ -149,7 +159,10 @@ class HierarchicalEvaluator:
         )
 
         self.avg_class_f1 = np.mean(class_[1][:6, 3])
-        self.avg_class_and_detection_f1 = np.mean(np.append(class_[1][:6, 3], detection[3]))
+        if self.head_type == "MTL 6":
+            self.avg_class_and_detection_f1 = np.mean(np.append(class_[1][:6, 3], detection[3]))
+        elif self.head_type == "STL":
+            self.avg_class_and_detection_f1 = np.mean(np.append(class_[1][3]))
 
         return{ 
             "detection": {
