@@ -9,7 +9,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 import sys
 import pandas as pd
 import os
-from utils import get_possible_outputs
+from utils import get_possible_outputs, get_possible_classes_per_category
 
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
@@ -44,12 +44,14 @@ class FallacyDataset(Dataset):
 
 def prompt_zeroshot(text:str) -> str:
     _, category_labels, class_labels = get_possible_outputs()
+    possible_classes_per_category = get_possible_classes_per_category()
     messages = [
         {"role": "system", "content": "Your task is to simply and promptly give bare answer the next 3 questions. The answer needs to be in the following format, each on a new line: \n1. <Yes/No>\n2. <Fallacy Category>\n3. <Specific Type>.\n Do not generate anything beyond these three lines. Do not explain or continue after the third line."},
         {"role": "user", "content": f"Text: {text}"},
         {"role": "user", "content": "1. Is the text fallacious? Only answer with 'yes' or 'no'."},
         {"role": "user", "content": f"2. What category of fallacy is it? You only have to answer with one of the following labels: {category_labels}, or ['None'] if it is not fallacious."},
-        {"role": "user", "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
+        {"role": "user", 
+            "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels. If you answered 'None' to the previous question, you can answer with 'None' here as well. If you answered 'Fallacy of Emotion' to the category question, you can answer with one of the following labels: {possible_classes_per_category['Fallacy of Emotion']}. If you answered 'Fallacy of Credibility' to the category question, you can answer with one of the following labels: {possible_classes_per_category['Fallacy of Credibility']}. If you answered 'Fallacy of Logic' to the category question, you can answer with one of the following labels: {possible_classes_per_category['Fallacy of Logic']}."},
     ]
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
@@ -66,6 +68,7 @@ def prompt_oneshot(text:str) -> str:
     )
 
     _, category_labels, class_labels = get_possible_outputs()
+    possible_classes_per_category = get_possible_classes_per_category()
 
     messages = [
         {   "role": "system",
@@ -76,7 +79,8 @@ def prompt_oneshot(text:str) -> str:
         {"role": "user", "content": f"Text: {text}"},
         {"role": "user", "content": "1. Is the text fallacious? Only answer with 'yes' or 'no'."},
         {"role": "user", "content": f"2. What category of fallacy is it? You only have to answer with one of the following labels: {category_labels}, or ['None'] if it is not fallacious."},
-        {"role": "user", "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels: {class_labels}, or ['None'] if it is not fallacious."},
+        {"role": "user", 
+            "content": f"3. What specific kind of fallacy is it? You only have to answer with one of the following labels. If you answered 'None' to the previous question, you can answer with 'None' here as well. If you answered 'Fallacy of Emotion' to the category question, you can answer with one of the following labels: {possible_classes_per_category['Fallacy of Emotion']}. If you answered 'Fallacy of Credibility' to the category question, you can answer with one of the following labels: {possible_classes_per_category['Fallacy of Credibility']}. If you answered 'Fallacy of Logic' to the category question, you can answer with one of the following labels: {possible_classes_per_category['Fallacy of Logic']}."},
     ]
 
     prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
