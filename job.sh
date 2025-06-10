@@ -18,21 +18,17 @@ source $HOME/venvs/ltp/bin/activate
 
 # Create result directory
 mkdir -p /scratch/$USER/LTP/LTP-fallacy-detection/Saved_Plots/$SLURM_JOB_ID
+mkdir -p /scratch/$USER/LTP/LTP-fallacy-detection/Saved_Models/$SLURM_JOB_ID
 
 ############ GETTING THE CODE
 mkdir -p $TMPDIR 
 mkdir -p $TMPDIR/Saved_Plots
+mkdir -p $TMPDIR/Saved_Models
 
 # Copy code into TMPDIR
 echo "Started copying at $(date)"
 cp -r /scratch/$USER/LTP/LTP-fallacy-detection $TMPDIR
 echo "Finished copying at $(date)"
-
-# ############ SETUP JOB TIMING
-# # Record job start and compute end time 9.900 secondes = 2.75 hours
-# JOB_START_TIME=$(date +%s)
-# JOB_END_TIME=$(($JOB_START_TIME + 13500))
-# export JOB_END_TIME  # Make it accessible in Python
 
 ############ RUN CODE
 cd $TMPDIR/LTP-fallacy-detection/Model
@@ -48,3 +44,4 @@ python3 -u train.py
 ############ SAVING RESULTS
 # Save results to permanent storage
 cp -r $TMPDIR/Saved_Plots /scratch/$USER/LTP/LTP-fallacy-detection/Saved_Plots/$SLURM_JOB_ID
+cp -r $TMPDIR/Saved_Models /scratch/$USER/LTP/LTP-fallacy-detection/Saved_Models/$SLURM_JOB_ID
