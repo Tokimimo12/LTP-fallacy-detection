@@ -198,7 +198,6 @@ if __name__ == "__main__":
                 'gt_categories': batch['gt_category'][i],
                 'gt_classes': batch['gt_class'][i]
             })
-        break
     
     # Convert results to DataFrame
     results_df = pd.DataFrame(all_results)
