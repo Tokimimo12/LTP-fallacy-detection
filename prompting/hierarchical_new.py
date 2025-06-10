@@ -98,6 +98,7 @@ def extract_answers(answer: str) -> tuple:
     
     lines = answer.strip().splitlines()
     class_to_category = get_class_to_category()
+    return answer
     
     try:
         # Find the index of the assistant's response
