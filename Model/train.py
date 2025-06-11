@@ -326,7 +326,7 @@ if __name__ == "__main__":
     batch_size = 32  # Adjust as needed
 
     for head_type in ["HTC"]:
-        for augment in ["None", "EDA", "LLM", "Undersample"]:
+        for augment in ["Undersample"]:
             print("Prediction Head Type: ", head_type, "Augmentation Type:", augment)
             for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
                 print(f"################ Training with {bert_model_name} model...")
