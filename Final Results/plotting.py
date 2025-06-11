@@ -258,9 +258,9 @@ def plot_class_f1s(class_f1s_df, filename):
     
 
     # Customize titles and labels
-    plt.title('F1 Scores by Fallacy Type for ' + str(bert_model_name) + ' ' + str(classification_model_name) + ' With ' + aug_name + ' Data')
+    plt.title('Class F1 Scores by Fallacy Type for ' + str(bert_model_name) + ' ' + str(classification_model_name) + ' With ' + aug_name + ' Data')
     plt.xlabel('Fallacy Type')
-    plt.ylabel('F1 Score')
+    plt.ylabel('Class F1 Score')
     plt.ylim(0, 1.0) 
 
     plt.xticks(rotation=45, ha='right')

@@ -13,6 +13,8 @@ from data.MM_USED_fallacy.MM_Dataset import MM_Dataset, HTC_MM_Dataset
 from Evaluation.HierarchicalEvaluator import HierarchicalEvaluator
 from Utils.utils import *
 
+def list_of_strings(arg):
+    return arg.split(',')
 
 def tokenize(data_batch, tokenizer, max_length=50):
     tokenized = tokenizer(data_batch, max_length = max_length, truncation=True, padding = "longest", return_tensors="pt")
@@ -170,9 +172,9 @@ def eval_model(job_id, bert_model_name = "DistilBert", head_type="MTL 6", augmen
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Plot metrics for fallacy detection')
     parser.add_argument('--job_id', type=str, help='JOB_ID of the folder where the trained models are stored')
-    parser.add_argument('--head_type_list', type=list, default=["MTL 6", "HTC", "STL"], help='List of heads types to test')
-    parser.add_argument('--augment_list', type=list, default=["None", "EDA", "LLM", "Undersample"], help='List of augmentation methods to test')
-    parser.add_argument('--bert_model_name_list', type=list, default=["DistilBert", "Bert", "Roberta"], help='List of bert models to test')
+    parser.add_argument('--head_type_list', type=list_of_strings, default="MTL 6,HTC,STL", help='List of heads types to test')
+    parser.add_argument('--augment_list', type=list_of_strings, default="None,EDA,LLM,Undersample", help='List of augmentation methods to test')
+    parser.add_argument('--bert_model_name_list', type=list_of_strings, default="DistilBert,Bert,Roberta", help='List of bert models to test')
     args = parser.parse_args()
 
     # Example usage
