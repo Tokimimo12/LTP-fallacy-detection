@@ -68,7 +68,13 @@ def get_metric_txt(dir="metrics"):
 
             file_dir = os.path.join(dir, file_name)
             text = open(file_dir).read()
-            f1, digits = get_f1_from_txt(text, classification_model_name)
+            if classification_model_name != "STL":
+                f1, digits = get_f1_from_txt(text, classification_model_name)
+            else:
+                csv_file_name = file_name[:-13] + "metrics.csv"
+                file_dir = os.path.join(dir, csv_file_name)
+                df = pd.read_csv(file_dir)
+                f1 = df.loc[0, "Reversed F1"]
 
             metrics_list.append((bert_model_name, classification_model_name, aug_name, f1))
 
@@ -77,7 +83,7 @@ def get_metric_txt(dir="metrics"):
 def get_metric_csvs(dir="metrics"):
     class_and_detection_f1_name, class_f1_name = get_col_names(dir)
 
-    metrics_list = [] # Tuple of bert model name, classification model name, augmentation name, class f1, class & detection F1
+    metrics_list = [] # Tuple of bert model name, classification model name, augmentation name, class & detection F1, class f1
     file_list = os.listdir(dir)
     for file_name in file_list:
         if ".csv" in file_name:
@@ -89,6 +95,8 @@ def get_metric_csvs(dir="metrics"):
             aug_name = split_filename[3]
             # Clean names for plotting later
             bert_model_name, classification_model_name, aug_name = clean_names(bert_model_name, classification_model_name, aug_name)
+            
+            
             file_dir = os.path.join(dir, file_name)
             df = pd.read_csv(file_dir)
             idx_max_class_and_detection_f1 = df[class_and_detection_f1_name].idxmax()
@@ -177,7 +185,7 @@ def main():
     args = parser.parse_args()
 
     csv_metrics_list = get_metric_csvs(dir=args.data_dir)
-    df_csv = pd.DataFrame(csv_metrics_list, columns=['bert_model', 'classifier', 'augmentation', 'class_f1', 'class_and_detection_f1'])
+    df_csv = pd.DataFrame(csv_metrics_list, columns=['bert_model', 'classifier', 'augmentation', 'class_and_detection_f1', 'class_f1'])
     plot_metrics(df_csv, filename = args.data_dir, metric_to_plot='class_f1')
 
     text_metrics_list = get_metric_txt(dir=args.data_dir)
