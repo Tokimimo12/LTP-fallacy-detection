@@ -28,7 +28,7 @@ mkdir -p $TMPDIR/Saved_Test_Metrics
 
 # Copy code into TMPDIR
 echo "Started copying at $(date)"
-cp -r /scratch/$USER/LTP $TMPDIR
+cp -r /scratch/$USER/LTP/LTP-fallacy-detection $TMPDIR
 echo "Finished copying at $(date)"
 
 cd $TMPDIR/LTP-fallacy-detection/Model
