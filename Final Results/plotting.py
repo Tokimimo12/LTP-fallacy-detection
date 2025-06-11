@@ -4,6 +4,7 @@ import colorsys
 import os
 import pandas as pd
 import argparse
+import numpy as np
 
 def clean_names(bert_model_name, classification_model_name, aug_name):
     if classification_model_name == "MTL 6":
@@ -23,6 +24,9 @@ def get_col_names(dir):
         class_and_detection_f1_name = "Avg Val Class & Detection F1"
         class_f1_name = "Avg Val Class F1"
     if "test" in dir:
+        class_and_detection_f1_name = "Avg Test Class & Detection F1"
+        class_f1_name = "Avg Test Class F1"
+    else:
         class_and_detection_f1_name = "Avg Test Class & Detection F1"
         class_f1_name = "Avg Test Class F1"
 
@@ -107,6 +111,29 @@ def get_metric_csvs(dir="metrics"):
 
     return metrics_list
 
+def get_class_f1s(dir, file_name):
+    cleaned_filename = file_name.replace('/', '_')
+    cleaned_filename = cleaned_filename.replace(':', '_')
+    split_filename = cleaned_filename.split('_')
+    bert_model_name = split_filename[0]
+    classification_model_name = split_filename[1]
+    aug_name = split_filename[3]
+    # Clean names for plotting later
+    bert_model_name, classification_model_name, aug_name = clean_names(bert_model_name, classification_model_name, aug_name)
+
+
+    file_dir = os.path.join(dir, file_name)
+    text = open(file_dir).read()
+    _, digits = get_f1_from_txt(text, classification_model_name)
+
+    if classification_model_name == "SLT":
+        class_f1s = digits[-8:-2]
+    else:
+        class_f1s = digits[-7:-1]
+
+    return np.array(class_f1s)
+
+
 def plot_metrics(metrics_df, filename, metric_to_plot = "class_f1"):
     df = metrics_df
 
@@ -172,9 +199,81 @@ def plot_metrics(metrics_df, filename, metric_to_plot = "class_f1"):
     plt.legend(title='Classification Head | Encoder Model', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     plt.savefig("plots/" + str(filename) + "_" + str(metric_to_plot) + "_results", dpi=300, # Increased resolution
-                bbox_inches='tight', # Remove extra whitespace
-                transparent=True) # Set to True if you want a transparent background
+                bbox_inches='tight',
+                transparent=True)
     plt.show()
+
+def plot_class_f1s(class_f1s_df, filename):
+    # Define the mapping from fallacy name to category
+    # This is derived from your fallacy_num_to_name, but directly uses names as keys
+    fallacy_name_to_category = {
+        "Appeal to Emotion": "Fallacy of Emotion",
+        "Appeal to Authority": "Fallacy of Credibility",
+        "Ad Hominem": "Fallacy of Credibility",
+        "False Cause": "Fallacy of Logic",
+        "Slippery Slope": "Fallacy of Logic",
+        "Slogans": "Fallacy of Emotion"
+    }
+
+    # 1. Melt the DataFrame to long format
+    df_melted = class_f1s_df.melt(var_name='Fallacy Type', value_name='F1 Score')
+
+    # 2. Add the 'Category' column
+    df_melted['Category'] = df_melted['Fallacy Type'].map(fallacy_name_to_category)
+
+    category_order = ["Fallacy of Credibility", "Fallacy of Emotion", "Fallacy of Logic"]
+    df_melted['Category'] = pd.Categorical(df_melted['Category'], categories=category_order, ordered=True)
+
+    # 3. Sort by Category to group similar classes together
+    df_melted = df_melted.sort_values(by=['Category', 'Fallacy Type'])
+
+    plt.figure(figsize=(12, 6))
+
+    ax = sns.barplot(
+        x='Fallacy Type',
+        y='F1 Score',
+        data=df_melted,
+        hue='Category',         # Color bars based on category
+        dodge=False,            # Don't dodge bars, let sorting handle grouping
+        palette='viridis' 
+    )
+
+    # Add F1 scores on top of the bars
+    for idx, p in enumerate(ax.patches):
+        if p.get_height() < 0.02:
+            continue
+        ax.annotate(f'{p.get_height():.2f}',
+                    (p.get_x() + p.get_width() / 2., p.get_height()),
+                    ha='center', va='center', xytext=(0, 5), textcoords='offset points',
+                    fontsize=9, color='black')
+        
+    cleaned_filename = filename.replace('/', '_')
+    cleaned_filename = cleaned_filename.replace(':', '_')
+    split_filename = cleaned_filename.split('_')
+    bert_model_name = split_filename[0]
+    classification_model_name = split_filename[1]
+    aug_name = split_filename[3]
+    # Clean names for plotting later
+    bert_model_name, classification_model_name, aug_name = clean_names(bert_model_name, classification_model_name, aug_name)
+    
+
+    # Customize titles and labels
+    plt.title('F1 Scores by Fallacy Type for ' + str(bert_model_name) + ' ' + str(classification_model_name) + ' With ' + aug_name + ' Data')
+    plt.xlabel('Fallacy Type')
+    plt.ylabel('F1 Score')
+    plt.ylim(0, 1.0) 
+
+    plt.xticks(rotation=45, ha='right')
+    plt.yticks(fontsize=10)
+
+    plt.legend(title='Fallacy Category', bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    plt.tight_layout()
+    plt.savefig("plots/" + str(bert_model_name) + '_' + str(classification_model_name) + '_' + str(aug_name) + "_Class_F1s_results", dpi=300, # Increased resolution
+                bbox_inches='tight',
+                transparent=True)
+    plt.show()
+                
 
 
 
@@ -192,5 +291,9 @@ def main():
     df_txt = pd.DataFrame(text_metrics_list, columns=['bert_model', 'classifier', 'augmentation', 'detection_f1'])
     plot_metrics(df_txt, filename = args.data_dir, metric_to_plot='detection_f1')
 
+    best_filename = "Roberta_MTL 6_Augmentation:Undersample_test_evaluator.txt"
+    class_f1s_list = get_class_f1s(dir=args.data_dir, file_name=best_filename)
+    df_f1s = pd.DataFrame([class_f1s_list], columns=['Appeal to Emotion', 'Appeal to Authority', 'Ad Hominem', 'False Cause', 'Slippery Slope', 'Slogans'])
+    plot_class_f1s(df_f1s, filename = best_filename[:-4])
 
 main()
