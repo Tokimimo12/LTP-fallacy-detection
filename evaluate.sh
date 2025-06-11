@@ -13,7 +13,7 @@ module purge
 module load Python/3.9.6-GCCcore-11.2.0
 
 # Activate virtual environment
-source $HOME/venvs/ltp_venv_new/bin/activate
+source $HOME/venvs/ltp/bin/activate
 
 # Create result directory
 mkdir -p /scratch/$USER/LTP/LTP-fallacy-detection/Saved_Plots/$SLURM_JOB_ID
