@@ -30,3 +30,5 @@ prompting/results/zeroshot_hierarchical
 prompting/results/oneshot_fixed
 prompting/results/zeroshot_fixed
 
+*.png
+
