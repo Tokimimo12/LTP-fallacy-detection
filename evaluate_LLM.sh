@@ -35,7 +35,7 @@ cd $TMPDIR/LTP-fallacy-detection/Model
 
 # Run training with parameter file
 echo "About to run Python script at $(date)"
-python3 -u test_eval.py --job_id 17864792 --head_type_list "HTC" --augment_list "LLM"
+python3 -u test_eval.py --job_id 17869137 --head_type_list "HTC" --augment_list "LLM"
 # python3 -u train.py
 
 
