@@ -10,6 +10,8 @@ def plot_fallacy_detection_distribution(df, augmented=False):
     suffix = "- augmented" if augmented else ""
     
     sns.countplot(x='fallacy_detection', hue='fallacy_detection', data=df, palette='Set2', legend=False)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
     plt.title(f'Distribution of Fallacy Detection{suffix}')
     plt.xlabel('Fallacy Detection')
     plt.ylabel('Count')
@@ -38,6 +40,8 @@ def plot_category_distribution(df, augmented=False):
 
 
     plt.title(f'Distribution of Fallacy Categories{suffix}')
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
     plt.xlabel('Fallacy Category')
     plt.ylabel('Count')
 
@@ -59,6 +63,8 @@ def plot_class_distribution(df, augmented=False):
 
     sns.countplot(x='class', hue='class', data=filtered_df, palette='Set2', legend=False)
 
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
     plt.title(f'Distribution of Fallacy Classes {suffix}')
     plt.xlabel('Fallacy Class')
     plt.ylabel('Count')
@@ -91,6 +97,9 @@ def main():
 
     # Set this to True or False depending on the data you're using
     is_augmented = False
+
+    # print number of rows in the dataframe
+    print(f"Number of rows in the dataframe: {len(df)}")
 
     plot_fallacy_detection_distribution(df, augmented=is_augmented)
     plot_category_distribution(df, augmented=is_augmented)
