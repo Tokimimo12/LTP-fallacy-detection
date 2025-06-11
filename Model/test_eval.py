@@ -4,6 +4,7 @@ import torch
 import csv
 from hierarchicalsoftmax import HierarchicalSoftmaxLoss
 from torch.utils.data import DataLoader
+import argparse
 
 
 from model import get_model, get_tokenizer, HTCModel
@@ -18,7 +19,7 @@ def tokenize(data_batch, tokenizer, max_length=50):
 
     return [tokenized]
 
-def get_saved_model_path(bert_model_name, head_type, augment):
+def get_saved_model_path(bert_model_name, head_type, augment, job_id):
     saved_model_name = bert_model_name + "_" + head_type + "_Augmentation:" + augment + "_best.pth"
 
     current_script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -29,12 +30,12 @@ def get_saved_model_path(bert_model_name, head_type, augment):
 
     return model_path
 
-def eval(test_loader, bert_model_name, tokenizer, head_type="MTL 6", htc=False, augment=None):
+def eval(job_id, test_loader, bert_model_name, tokenizer, head_type="MTL 6", htc=False, augment=None):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     model = get_model(device, model_name=bert_model_name, head_type=head_type, htc=htc, root=get_tree() if htc else None)
 
-    saved_model_path = get_saved_model_path(bert_model_name, head_type, augment)
+    saved_model_path = get_saved_model_path(bert_model_name, head_type, augment, job_id)
     state_dict = torch.load(saved_model_path, map_location=device)
     # Load the state dictionary into the model
     model.load_state_dict(state_dict)
@@ -136,7 +137,7 @@ def load_datasets(train_snippets, train_labels, val_snippets, val_labels, test_s
     return train_loader, val_loader, test_loader
 
 
-def eval_model(bert_model_name = "DistilBert", head_type="MTL 6", augment="None", num_epochs=5, batch_size=8):
+def eval_model(job_id, bert_model_name = "DistilBert", head_type="MTL 6", augment="None", num_epochs=5, batch_size=8):
     # Load data
     htc = False
     if head_type == "HTC":
@@ -164,19 +165,26 @@ def eval_model(bert_model_name = "DistilBert", head_type="MTL 6", augment="None"
         root=root if htc else None
     )
 
-    eval(test_loader, bert_model_name, tokenizer, head_type=head_type, htc=htc, augment=augment)
+    eval(job_id, test_loader, bert_model_name, tokenizer, head_type=head_type, htc=htc, augment=augment)
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Plot metrics for fallacy detection')
+    parser.add_argument('--job_id', type=str, help='JOB_ID of the folder where the trained models are stored')
+    parser.add_argument('--head_type_list', type=list, default=["MTL 6", "HTC", "STL"], help='List of heads types to test')
+    parser.add_argument('--augment_list', type=list, default=["None", "EDA", "LLM", "Undersample"], help='List of augmentation methods to test')
+    parser.add_argument('--bert_model_name_list', type=list, default=["DistilBert", "Bert", "Roberta"], help='List of bert models to test')
+    args = parser.parse_args()
+
     # Example usage
     head_type = "MTL 6"  # Set to "STL" for single task, "MTL 2" for 2 classes in final layer, and "HTC" for hierarchical softmax
     augment = "LLM"  # Set to "None" for no augmentation, "EDA" for EDA augmentation or "LLM" for LLM generated augmentation, "LLM+EDA" for both, and "Undersample" to undersample non-fallacy
     num_epochs = 20  # Adjust as needed
     batch_size = 32  # Adjust as needed
 
-    for head_type in ["MTL 6", "HTC", "STL"]:
-        for augment in ["None", "EDA", "LLM", "Undersample"]:
+    for head_type in args.head_type_list:
+        for augment in args.augment_list:
             print("Prediction Head Type: ", head_type, "Augmentation Type:", augment)
-            for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
+            for bert_model_name in args.bert_model_name_list:
                 print(f"################ Testing with {bert_model_name} model...")
-                eval_model(bert_model_name, head_type=head_type, augment=augment, num_epochs=num_epochs, batch_size=batch_size)
+                eval_model(args.job_id, bert_model_name, head_type=head_type, augment=augment, num_epochs=num_epochs, batch_size=batch_size)
