@@ -23,7 +23,7 @@ def get_saved_model_path(bert_model_name, head_type, augment):
 
     current_script_dir = os.path.dirname(os.path.abspath(__file__))
     ltp_dir = os.path.dirname(current_script_dir)
-    trained_models_dir = os.path.join(ltp_dir, "Trained_Models/17864792/Saved_Models")
+    trained_models_dir = os.path.join(ltp_dir, "Trained_Models/17864139/Saved_Models")
     model_path = os.path.join(trained_models_dir, str(saved_model_name))
     print("Model path: ", model_path)
 
