@@ -323,10 +323,10 @@ if __name__ == "__main__":
     head_type = "MTL 6"  # Set to "STL" for single task, "MTL 2" for 2 classes in final layer, and "HTC" for hierarchical softmax
     augment = "LLM"  # Set to "None" for no augmentation, "EDA" for EDA augmentation or "LLM" for LLM generated augmentation, "LLM+EDA" for both, and "Undersample" to undersample non-fallacy
     num_epochs = 20  # Adjust as needed
-    batch_size = 32  # Adjust as needed
+    batch_size = 1  # Adjust as needed
 
     for head_type in ["HTC"]:
-        for augment in ["Undersample"]:
+        for augment in ["LLM"]:
             print("Prediction Head Type: ", head_type, "Augmentation Type:", augment)
             for bert_model_name in ["DistilBert", "Bert", "Roberta"]:
                 print(f"################ Training with {bert_model_name} model...")
