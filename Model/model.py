@@ -76,27 +76,10 @@ class HTCModel(nn.Module):
     def __init__(self, base_model, root):
         super().__init__()
         self.bert = base_model
-
-        # Add an intermediate layer for better representation
-        self.intermediate = nn.Sequential(
-            nn.Linear(768, 768),
-            nn.ReLU(),
-            nn.Dropout(0.1)
-        )
-        
         self.output = HierarchicalSoftmaxLinear(in_features=768, root=root)
 
     def forward(self, input_ids, attention_mask):
         y = self.bert(input_ids=input_ids, attention_mask=attention_mask)
         y = y.last_hidden_state[:, 0]
-        y = self.intermediate(y)
         y = self.output(y)
         return y
-        
-    #     self.output = HierarchicalSoftmaxLinear(in_features=768, root=root)
-
-    # def forward(self, input_ids, attention_mask):
-    #     y = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-    #     y = y.last_hidden_state[:, 0]
-    #     y = self.output(y)
-    #     return y
