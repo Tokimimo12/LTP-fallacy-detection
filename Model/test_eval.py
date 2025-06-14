@@ -22,7 +22,7 @@ def tokenize(data_batch, tokenizer, max_length=50):
     return [tokenized]
 
 def get_saved_model_path(bert_model_name, head_type, augment, job_id):
-    head_type = "HTC"
+    
     saved_model_name = bert_model_name + "_" + head_type + "_Augmentation:" + augment + "_best.pth"
 
     current_script_dir = os.path.dirname(os.path.abspath(__file__))
