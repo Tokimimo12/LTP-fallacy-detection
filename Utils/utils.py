@@ -304,6 +304,11 @@ def get_data(augment, htc=False):
         # Extract snippets and labels from augmented data
         aug_snippets = llm_aug_data["snippet"].tolist()
         aug_labels = llm_aug_data[["fallacy_detection", "category", "class"]].values.tolist()
+
+        if htc:
+            class_to_name, category_to_name, detection_to_name = get_index_dicts()
+            # convert labels to names
+            aug_labels = [[detection_to_name[label[0]], category_to_name[label[1]], class_to_name[label[2]]] for label in aug_labels]
     
         # Add augmented data to training data
         train_snippets.extend(aug_snippets)
