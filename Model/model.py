@@ -76,7 +76,6 @@ class HTCModel(nn.Module):
     def __init__(self, base_model, root):
         super().__init__()
         self.bert = base_model
-        
         self.output = HierarchicalSoftmaxLinear(in_features=768, root=root)
 
     def forward(self, input_ids, attention_mask):
