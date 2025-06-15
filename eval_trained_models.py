@@ -121,7 +121,7 @@ def eval_model(model_filename, data_filename, bert_model_name = "Roberta", head_
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Evaluate trained model on fallacy detection and classification')
-    parser.add_argument('--model_filename', type=str, default='Roberta_MTL 6_Augmentation_None_best.pth', help='Filename of the model to evaluate')
+    parser.add_argument('--model_filename', type=str, default='Best_fallacy_detection.pth', help='Filename of the model to evaluate')
     parser.add_argument('--test_filename', type=str, help='Filename of test data file')
     parser.add_argument('--batch_size', type=int)
 
