@@ -90,8 +90,6 @@ def augment_data(batch_size=12):
     for i in tqdm(range(0, len(prompts), batch_size)):
         batch_prompts = prompts[i:i + batch_size]
         output = pipeline(batch_prompts, num_return_sequences=1)
-        # only_responses = output['generated_texts'][len(batch_prompts):].strip()  # Remove the prompt part from the output
-        # output_texts.extend(only_responses)
         for prompt, result in zip(batch_prompts, output):
             full = result['generated_text']
             # strip off the prompt prefix to get just the new sentence:

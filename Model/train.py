@@ -319,6 +319,7 @@ def train_model(bert_model_name = "DistilBert", head_type="MTL 6", augment="None
     train(train_loader, val_loader, bert_model_name, tokenizer, loss_weights, num_epochs=num_epochs, head_type=head_type, htc=htc, augment=augment)
 
 if __name__ == "__main__":
+    # For training and evaluating a combination of models
     # Example usage
     head_type = "MTL 6"  # Set to "STL" for single task, "MTL 2" for 2 classes in final layer, and "HTC" for hierarchical softmax
     augment = "LLM"  # Set to "None" for no augmentation, "EDA" for EDA augmentation or "LLM" for LLM generated augmentation, "LLM+EDA" for both, and "Undersample" to undersample non-fallacy

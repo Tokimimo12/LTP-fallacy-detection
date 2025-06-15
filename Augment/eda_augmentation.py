@@ -17,8 +17,6 @@ def eda_augmentation(data):
     """
 
     # Load data
-    # if not isinstance(data, pd.DataFrame):
-    #     data = pd.read_csv("../data/MM_USED_fallacy/full_data_processed.csv")
     data_copy = data.copy()
 
     for index, row in tqdm(data.iterrows(), total=data.shape[0]):
