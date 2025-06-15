@@ -56,6 +56,4 @@ def create_full_data_file():
     final_df = combined_df[["ID", "snippet", "fallacy_detection", "category", "class"]]
     final_df.to_csv("../data/MM_USED_fallacy/full_data_processed.csv", index=False)
 
-
-# fallacy_to_category()
 create_full_data_file()

@@ -30,12 +30,15 @@ class HierarchicalEvaluator:
         self.avg_class_and_detection_f1 = None
 
     def get_avg_class_f1(self):
+        # Returns the average F1 score for the classes
         return self.avg_class_f1
     
     def get_avg_class_and_detection_f1(self):
+        # Returns the average F1 score for the classes and detection
         return self.avg_class_and_detection_f1
     
     def compute_reversed_f1_for_class_6(self):
+        # This function computes the F1 score for class 6 (no fallacy) by treating all other classes as positive
         i = 6  # index for class 6 (no fallacy)
 
         # Treat all other classes (0–5) as positive
@@ -51,6 +54,9 @@ class HierarchicalEvaluator:
 
 
     def add(self, predictions, ground_truth):
+        # this function adds a single prediction and ground truth pair to the evaluator
+
+
         detection_pred, category_pred, class_pred = predictions
         detection_gt, category_gt, class_gt = ground_truth
 
@@ -108,6 +114,8 @@ class HierarchicalEvaluator:
 
 
     def calculate_metrics(self, correct, total, tp, fp, fn):
+        # this function calculates the accuracy, precision, recall and f1 score for the given metrics
+
         # check if input is a numpy array, then its binary classification
         if not isinstance(correct, np.ndarray):
             acc = correct / total if total else 0
@@ -140,6 +148,9 @@ class HierarchicalEvaluator:
 
 
     def evaluate(self):
+        # this function evaluates the metrics for detection, category and class levels
+
+
         detection = self.calculate_metrics(
             self.detection_correct, 
             self.detection_total, 
