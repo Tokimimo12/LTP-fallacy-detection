@@ -7,6 +7,8 @@ data/data_afd
 data/MM_USED_fallacy/*.csv
 data/MM_USED_fallacy/*.pkl
 
+# ignore all pycache folders
+**/__pycache__/
 
 *.pyc
 
@@ -30,3 +32,6 @@ prompting/results/zeroshot_hierarchical
 prompting/results/oneshot_fixed
 prompting/results/zeroshot_fixed
 
+*.png
+
+*.sh

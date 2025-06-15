@@ -4,6 +4,7 @@ import logging
 from retry import retry
 from transformers import pipeline, AutoConfig
 from transformers import AutoTokenizer
+import string
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 import sys
@@ -98,7 +99,7 @@ def extract_answers(answer: str) -> tuple:
     
     lines = answer.strip().splitlines()
     class_to_category = get_class_to_category()
-    return answer
+    print(f"Extracting answers from: {lines}")
     
     try:
         # Find the index of the assistant's response
@@ -106,6 +107,10 @@ def extract_answers(answer: str) -> tuple:
         
         # Get the line after "Assistant:"
         response_line = lines[assistant_index + 1].strip()
+        print(f"Response line: {response_line}")
+
+        # remove all punctuation
+        response_line = response_line.translate(str.maketrans('', '', string.punctuation))
 
         # remove "<"
         if response_line.startswith("<") and response_line.endswith(">"):
@@ -198,6 +203,10 @@ if __name__ == "__main__":
                 data = data[data['pred_detection'].str.lower() == 'yes']
                 print(f"Filtered to {len(data)} fallacious examples for category level")
             if level == "class":
+                # check if pred_categories exists, if not, skip 
+                if 'pred_categories' not in data.columns:
+                    print("No pred_categories found in data, skipping class level processing.")
+                    continue
                 # For class level, we need to filter by category
                 data = data[data['pred_categories'].isin(possible_classes_per_category.keys())]
                 print(f"Filtered to {len(data)} examples for class level")
@@ -252,33 +261,34 @@ if __name__ == "__main__":
                         'class': batch['class'][i]
                     })
 
-            # Convert results to DataFrame after each level
-            results_df = pd.DataFrame(all_results)
-            print(results_df.head())
-            
-            # Save complete results after each level
-            results_df.to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}.csv"), index=False)
-            print(f"Results saved to {os.path.join('results', f'flattened_{MODE}_{args.model}.csv')}")
-            
-            # Don't clear all_results after detection level since you need to keep those results
-            if level == "detection":
-                original_results = all_results.copy()
-            else:
-                # For category and class levels, make sure we keep all the detection results
-                # by combining with original detection results for non-fallacious examples
-                fallacious_indices = set([item['ID'] for item in all_results])
-                non_fallacious = [item for item in original_results if item['ID'] not in fallacious_indices]
-                all_results.extend(non_fallacious)
+        # Convert results to DataFrame after each level
+        results_df = pd.DataFrame(all_results)
+        print(f"Results after {level} level: {len(results_df)} examples")
         
-                    
-    
-    # Convert results to DataFrame
-    results_df = pd.DataFrame(all_results)
-
-    # Convert any tensor values to Python native types
-    for column in results_df.columns:
-        if results_df[column].apply(lambda x: hasattr(x, 'item')).any():
-            results_df[column] = results_df[column].apply(lambda x: x.item() if hasattr(x, 'item') else x)
-
-    results_df.to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}.csv"), index=False)
-    print(f"Results saved to {os.path.join('results', f'flattened_{MODE}_{args.model}.csv')}")
+        # Save results after each level
+        if level == "detection":
+            # After detection level, save the original results for future reference
+            original_results = all_results.copy()
+            results_df.to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}.csv"), index=False)
+            results_df.to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}_detection_safeguard.csv"), index=False)
+        else:
+            # For category and class levels, combine with original detection results
+            # This ensures we don't lose non-fallacious examples
+            current_ids = set([item['ID'] for item in all_results])
+            combined_results = all_results.copy()
+            
+            # Add back non-fallacious examples or examples not processed in this level
+            for item in original_results:
+                if item['ID'] not in current_ids:
+                    combined_results.append(item)
+            
+            # Save the combined results
+            pd.DataFrame(combined_results).to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}.csv"), index=False)
+            results_df.to_csv(os.path.join('results', f"flattened_{MODE}_{args.model}_other_safeguard.csv"), index=False)
+            
+        print(f"Results saved to {os.path.join('results', f'flattened_{MODE}_{args.model}.csv')}")
+        
+        # Don't clear all_results between levels to preserve previous results
+        if level != "detection":
+            # Reset all_results for the next level but keep original_results intact
+            all_results = []

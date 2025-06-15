@@ -22,12 +22,14 @@ def tokenize(data_batch, tokenizer, max_length=50):
     return [tokenized]
 
 def get_saved_model_path(bert_model_name, head_type, augment, job_id):
+    
     saved_model_name = bert_model_name + "_" + head_type + "_Augmentation:" + augment + "_best.pth"
 
     current_script_dir = os.path.dirname(os.path.abspath(__file__))
     ltp_dir = os.path.dirname(current_script_dir)
-    trained_models_dir = os.path.join(ltp_dir, "Trained_Models/" + str(job_id) + "/Saved_Models")
+    trained_models_dir = os.path.join(ltp_dir, f"Trained_Models/{job_id}/Saved_Models")
     model_path = os.path.join(trained_models_dir, str(saved_model_name))
+    print("Model path: ", model_path)
 
     return model_path
 
