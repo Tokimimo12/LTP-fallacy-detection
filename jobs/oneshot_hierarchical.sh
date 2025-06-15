@@ -4,7 +4,7 @@
 #SBATCH --nodes=1                     # Number of nodes (use 1 node)
 #SBATCH --ntasks=1                    # One task
 #SBATCH --gpus-per-node=v100:1
-#SBATCH --time=07:00:00              # Time limit for the job
+#SBATCH --time=05:00:00              # Time limit for the job
 #SBATCH --mem=20GB
 
 # Remove all previously loaded modules
@@ -42,9 +42,9 @@ huggingface-cli login --token $HF_TOKEN
 
 # Run training with parameter file
 echo "About to run Python script at $(date)"
-python3 -u hierarchical_new.py --mode one-shot --model llama
+# python3 -u hierarchical_new.py --mode one-shot --model llama
 python3 -u hierarchical_new.py --mode one-shot --model llama-instruct
-python3 -u hierarchical_new.py --mode one-shot --model menda
+# python3 -u hierarchical_new.py --mode one-shot --model menda
 # python3 -u hierarchical_new.py --mode one-shot --model phi-4 --batch_size 4
 python3 -u hierarchical_new.py --mode one-shot --model mistralai
 python3 -u hierarchical_new.py --mode one-shot --model tinyllama
