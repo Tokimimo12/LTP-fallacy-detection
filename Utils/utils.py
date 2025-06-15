@@ -319,3 +319,19 @@ def get_data(augment, htc=False):
         return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels, unique_classes
     else:
         return train_snippets, train_labels, val_snippets, val_labels, test_snippets, test_labels
+    
+def get_test_data(test_file_name):
+
+    # check if data is already split
+    if os.path.exists("data/MM_USED_fallacy/test/"+test_file_name):
+        print("Test data found, loading data...")
+        test_data = pd.read_csv("data/MM_USED_fallacy/test/"+test_file_name)
+        # print length of each split
+        print(f"Test data length: {len(test_data)}")
+
+        test_snippets = test_data["snippet"].tolist()
+        test_labels = test_data[["fallacy_detection", "category", "class"]].values.tolist()
+
+        return test_snippets, test_labels
+    else:
+        raise Exception("Test data file: data/MM_USED_fallacy/test/" + test_file_name + " not found.")
