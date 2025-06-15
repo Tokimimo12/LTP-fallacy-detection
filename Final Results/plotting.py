@@ -6,6 +6,8 @@ import pandas as pd
 import argparse
 import numpy as np
 
+FIG_SIZE = (10, 5)
+
 def clean_names(bert_model_name, classification_model_name, aug_name):
     if classification_model_name == "MTL 6":
         classification_model_name = "MTL"
@@ -72,7 +74,7 @@ def get_metric_txt(dir="metrics"):
 
             file_dir = os.path.join(dir, file_name)
             text = open(file_dir).read()
-            if classification_model_name != "STL":
+            if classification_model_name == "MTL":
                 f1, digits = get_f1_from_txt(text, classification_model_name)
             else:
                 csv_file_name = file_name[:-13] + "metrics.csv"
@@ -181,7 +183,7 @@ def plot_metrics(metrics_df, filename, metric_to_plot = "class_f1"):
         for bert in bert_models_ordered:
             sorted_combos.append(f"{clf} | {bert}")
 
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=FIG_SIZE)
     sns.barplot(
         data=df,
         x='augmentation',
@@ -227,7 +229,7 @@ def plot_class_f1s(class_f1s_df, filename):
     # 3. Sort by Category to group similar classes together
     df_melted = df_melted.sort_values(by=['Category', 'Fallacy Type'])
 
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=FIG_SIZE)
 
     ax = sns.barplot(
         x='Fallacy Type',
